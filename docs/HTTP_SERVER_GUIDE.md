@@ -89,12 +89,6 @@ GITLAB_TOKEN=your_gitlab_token
 
 # 服务器配置
 PORT=3000
-NODE_ENV=development
-
-# 内网访问配置（如需要）
-HTTP_PROXY=http://proxy.company.com:8080
-HTTPS_PROXY=http://proxy.company.com:8080
-VERIFY_SSL=false
 ```
 
 ## 测试连接
@@ -158,9 +152,8 @@ curl -X POST http://localhost:3000/mcp \
 
 ### 启用详细日志
 ```bash
-# 设置环境变量
+# 设置调试模式
 export DEBUG=*
-export NODE_ENV=development
 
 # 启动服务器
 yarn http:dev

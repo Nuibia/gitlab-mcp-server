@@ -1,6 +1,3 @@
-// 通用工具函数
-// 注意：GitLab相关功能已迁移到 src/services/gitlab.ts
-// 配置相关功能已迁移到 src/services/config.ts
 
 // 格式化日期
 export function formatDate(dateString: string): string {

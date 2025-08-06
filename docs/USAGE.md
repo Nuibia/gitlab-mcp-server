@@ -24,19 +24,11 @@ cp env.example .env
 
 ```env
 # GitLab配置
-GITLAB_URL=https://gitlab.com
-GITLAB_TOKEN=your_actual_gitlab_token_here
+GITLAB_URL=https://gitlab.com/
+GITLAB_TOKEN=glpat-xxxxxxxxxxxxxxxxxxxx
 
 # 服务器配置
 PORT=3000
-NODE_ENV=development
-
-# 代理配置（可选）
-HTTP_PROXY=http://proxy.company.com:8080
-HTTPS_PROXY=http://proxy.company.com:8080
-
-# SSL证书验证（内网GitLab可能需要）
-VERIFY_SSL=false
 ```
 
 ### 4. 构建项目
@@ -162,7 +154,7 @@ gitlab-mcp-server/
 
 ### 调试模式
 
-设置 `NODE_ENV=development` 来启用详细日志输出。
+服务器会输出详细的日志信息，包括启动信息、连接状态和错误信息。
 
 ## 扩展功能
 

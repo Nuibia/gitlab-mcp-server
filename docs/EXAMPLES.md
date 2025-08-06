@@ -23,7 +23,6 @@
 GITLAB_URL=https://gitlab.com/
 GITLAB_TOKEN=glpat-xxxxxxxxxxxxxxxxxxxx
 PORT=3000
-NODE_ENV=development
 ```
 
 **使用步骤**:
@@ -83,7 +82,6 @@ curl http://localhost:3000/health
 GITLAB_URL=https://gitlab.internal.company.com/
 GITLAB_TOKEN=glpat-xxxxxxxxxxxxxxxxxxxx
 PORT=3000
-NODE_ENV=development
 VERIFY_SSL=false
 ```
 
@@ -134,7 +132,6 @@ GITLAB_URL=https://gitlab.internal.company.com/
 GITLAB_TOKEN=glpat-xxxxxxxxxxxxxxxxxxxx
 VERIFY_SSL=false
 PORT=3000
-NODE_ENV=development
 ```
 
 **使用步骤**:
@@ -161,7 +158,6 @@ HTTP_PROXY=http://proxy.company.com:8080
 HTTPS_PROXY=http://proxy.company.com:8080
 VERIFY_SSL=false
 PORT=3000
-NODE_ENV=development
 ```
 
 **使用步骤**:
@@ -192,7 +188,6 @@ curl -x http://proxy.company.com:8080 \
 GITLAB_URL=https://gitlab.com/
 GITLAB_TOKEN=glpat-xxxxxxxxxxxxxxxxxxxx
 PORT=3000
-NODE_ENV=development
 ```
 
 **启动服务器**:

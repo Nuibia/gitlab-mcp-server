@@ -80,7 +80,6 @@ GITLAB_TOKEN=glpat-xxxxxxxxxxxxxxxxxxxx
 
 # 服务器配置
 PORT=3000
-NODE_ENV=development
 ```
 
 ### 4. 获取GitLab访问令牌
@@ -275,7 +274,7 @@ server.registerTool(
 
 ### 调试模式
 
-设置 `NODE_ENV=development` 来启用详细日志输出。
+服务器会输出详细的日志信息，包括启动信息、连接状态和错误信息。
 
 ### 日志输出
 

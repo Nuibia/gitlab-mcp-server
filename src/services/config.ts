@@ -9,8 +9,7 @@ export function getConfig(): Config {
   return {
     gitlabUrl: process.env.GITLAB_URL || "https://gitlab.com/",
     gitlabToken: process.env.GITLAB_TOKEN || "",
-    port: parseInt(process.env.PORT || "3000", 10),
-    nodeEnv: process.env.NODE_ENV || "development"
+    port: parseInt(process.env.PORT || "3000", 10)
   };
 }
 

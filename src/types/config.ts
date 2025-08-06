@@ -3,7 +3,6 @@ export interface Config {
   gitlabUrl: string;
   gitlabToken: string;
   port: number;
-  nodeEnv: string;
 }
 
 // 服务器配置接口
