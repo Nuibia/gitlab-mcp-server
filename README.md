@@ -47,7 +47,6 @@ gitlab-mcp-server/
 - **Model Context Protocol SDK**: 官方MCP SDK
 - **Express**: Web框架（HTTP服务器版本）
 - **Axios**: HTTP客户端
-- **Dotenv**: 环境变量管理
 - **CORS**: 跨域资源共享
 
 ## 安装和设置

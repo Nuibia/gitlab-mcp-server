@@ -6,39 +6,18 @@
 
 ## 核心特性
 
-### ✅ 已完成功能
-
-1. **项目列表查看** (`list_projects`)
-   - 获取GitLab实例中的所有项目
-   - 显示项目详细信息（名称、描述、可见性、星标数、分支数等）
-   - 格式化输出，便于阅读
-
-2. **现代化架构**
-   - 基于TypeScript，类型安全
-   - 使用最新的MCP SDK
-   - 支持ES模块
-   - 模块化设计，共享工具函数
-   - 完整的错误处理和日志记录
-
-3. **开发友好**
-   - 热重载开发模式
-   - 智能构建（自动清理旧文件）
-   - 详细的错误信息
-   - 完整的文档和示例
-
-4. **内网支持**
-   - HTTP服务器模式
-   - 代理支持
-   - SSL证书验证配置
-   - 内网访问优化
+1. **GitLab集成**: 完整的GitLab API集成
+2. **类型安全**: 完整的TypeScript类型定义
+3. **错误处理**: 统一的错误处理和用户友好的提示
+4. **模块化设计**: 分层架构，易于维护和扩展
 
 ## 技术栈
 
-- **TypeScript**: 类型安全的JavaScript
-- **MCP SDK**: Model Context Protocol官方SDK
+- **TypeScript**: 类型安全的JavaScript超集
+- **Model Context Protocol SDK**: 官方MCP SDK
+- **Express**: Web框架（HTTP服务器版本）
 - **Axios**: HTTP客户端
-- **Express**: Web框架（HTTP服务器）
-- **Dotenv**: 环境变量管理
+- **CORS**: 跨域资源共享
 
 ## 项目结构
 
@@ -117,43 +96,6 @@ import {
 } from "./services/index.js";
 import { getServerConfig } from "./services/config.js";
 import { generateProjectsListText } from "./utils/index.js";
-
-// 检查GitLab token
-checkGitLabToken();
-
-// 获取服务器配置
-const serverConfig = getServerConfig();
-
-// 创建MCP服务器
-const server = new McpServer({
-  name: serverConfig.name,
-  version: serverConfig.version
-});
-
-// 注册GitLab项目列表工具
-server.registerTool(
-  "list_projects",
-  {
-    title: "GitLab项目列表",
-    description: "获取所有GitLab项目列表",
-    inputSchema: {}
-  },
-  async () => {
-    try {
-      const projects = await getGitLabProjects();
-      const projectsText = generateProjectsListText(projects);
-      
-      return {
-        content: [{ type: "text", text: projectsText }]
-      };
-    } catch (error) {
-      const errorMessage = handleGitLabError(error);
-      return {
-        content: [{ type: "text", text: errorMessage }]
-      };
-    }
-  }
-);
 ```
 
 ## 使用方法

@@ -1,8 +1,4 @@
-import dotenv from "dotenv";
 import { Config, ServerConfig } from "../types/index.js";
-
-// 加载环境变量
-dotenv.config();
 
 // 获取环境配置
 export function getConfig(): Config {
