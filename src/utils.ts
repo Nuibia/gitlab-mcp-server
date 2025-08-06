@@ -6,25 +6,19 @@ import dotenv from "dotenv";
 dotenv.config();
 
 // GitLab API配置
-export const GITLAB_URL = process.env.GITLAB_URL || "https://gitlab.xiaomawang.com/";
+export const GITLAB_URL = process.env.GITLAB_URL || "https://gitlab.com/";
 export const GITLAB_TOKEN = process.env.GITLAB_TOKEN;
-
-// 代理配置
-const HTTP_PROXY = process.env.HTTP_PROXY;
-const HTTPS_PROXY = process.env.HTTPS_PROXY;
-
-// 证书验证配置
-const VERIFY_SSL = process.env.VERIFY_SSL !== "false"; // 默认验证SSL
 
 // 检查GitLab token
 export function checkGitLabToken() {
   if (!GITLAB_TOKEN) {
-    console.error("错误: 请设置GITLAB_TOKEN环境变量");
+    console.error("❌ 错误: 请设置GITLAB_TOKEN环境变量");
+    console.error("💡 提示: 请访问GitLab > Settings > Access Tokens 创建个人访问令牌");
     process.exit(1);
   }
 }
 
-// 创建axios实例，支持内网访问
+// 创建axios实例
 export function createAxiosInstance() {
   const config: any = {
     timeout: 30000, // 30秒超时
@@ -34,23 +28,10 @@ export function createAxiosInstance() {
     }
   };
 
-  // 配置代理
-  if (HTTP_PROXY || HTTPS_PROXY) {
-    config.proxy = {
-      host: HTTP_PROXY || HTTPS_PROXY,
-      port: 80,
-      protocol: 'http'
-    };
-    console.log(`🔗 使用代理: ${config.proxy.host}`);
-  }
-
-  // 配置HTTPS选项（用于自签名证书）
-  if (!VERIFY_SSL) {
-    config.httpsAgent = new https.Agent({
-      rejectUnauthorized: false
-    });
-    console.log("⚠️  已禁用SSL证书验证");
-  }
+  // 禁用SSL验证（支持自签名证书）
+  config.httpsAgent = new https.Agent({
+    rejectUnauthorized: false
+  });
 
   return axios.create(config);
 }
@@ -97,23 +78,27 @@ export function handleGitLabError(error: any) {
     
     let errorMessage = `❌ 获取GitLab项目失败 (状态码: ${status}): ${message}`;
     
-    // 针对内网访问的特殊错误处理
-    if (status === 0 || error.code === 'ECONNREFUSED') {
-      errorMessage += '\n\n💡 内网访问提示:\n' +
-        '1. 检查网络连接是否正常\n' +
-        '2. 确认GitLab URL是否正确\n' +
-        '3. 如需代理，请设置HTTP_PROXY或HTTPS_PROXY环境变量\n' +
-        '4. 如果是自签名证书，请设置VERIFY_SSL=false';
+    // 连接失败时的提示
+    if (status === 0 || error.code === 'ECONNREFUSED' || error.code === 'ENOTFOUND') {
+      errorMessage += '\n\n💡 网络连接提示:\n' +
+        '1. 请检查网络连接是否正常\n' +
+        '2. 确认GitLab服务器地址正确\n' +
+        '3. 如果使用VPN，请确保VPN连接正常';
     } else if (status === 401) {
       errorMessage += '\n\n💡 认证失败提示:\n' +
         '1. 检查GITLAB_TOKEN是否正确\n' +
         '2. 确认令牌具有read_api权限\n' +
-        '3. 检查令牌是否已过期';
+        '3. 检查令牌是否已过期\n' +
+        '4. 访问GitLab > Settings > Access Tokens 重新生成令牌';
     } else if (status === 404) {
       errorMessage += '\n\n💡 API路径错误提示:\n' +
         '1. 检查GitLab URL是否正确\n' +
-        '2. 确认GitLab版本支持v4 API\n' +
-        '3. 检查网络连接';
+        '2. 确认GitLab版本支持v4 API';
+    } else if (status === 403) {
+      errorMessage += '\n\n💡 权限不足提示:\n' +
+        '1. 确认令牌具有足够的权限\n' +
+        '2. 检查用户是否有访问项目的权限\n' +
+        '3. 联系GitLab管理员确认权限设置';
     }
     
     return errorMessage;

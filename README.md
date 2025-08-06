@@ -6,10 +6,11 @@
 
 - 🔍 **查看所有项目**: 获取GitLab实例中的所有项目列表
 - 📊 **项目详情**: 显示项目名称、描述、可见性、星标数、分支数等信息
-- 🎯 **模块化设计**: 共享工具函数，避免代码重复
+- 🎯 **SSL支持**: 自动支持自签名证书
 - 🚀 **现代化架构**: 基于最新的MCP SDK和TypeScript
-- 🌐 **HTTP服务器**: 支持HTTP传输，解决内网访问问题
+- 🌐 **HTTP服务器**: 支持HTTP传输，解决网络访问问题
 - 🧹 **智能构建**: 自动清理旧文件，确保构建干净
+- 🔒 **VPN支持**: 支持VPN环境下的GitLab访问
 
 ## 安装和设置
 
@@ -241,4 +242,11 @@ MIT License
 
 - [Model Context Protocol](https://modelcontextprotocol.io/)
 - [MCP TypeScript SDK](https://github.com/modelcontextprotocol/typescript-sdk)
-- [GitLab API文档](https://docs.gitlab.com/ee/api/) 
+- [GitLab API文档](https://docs.gitlab.com/ee/api/)
+
+## 文档
+
+- [使用指南](USAGE.md) - 详细的使用说明
+- [使用实例](EXAMPLES.md) - 各种场景的使用实例
+- [HTTP服务器指南](HTTP_SERVER_GUIDE.md) - HTTP服务器模式使用指南
+- [项目总结](SUMMARY.md) - 项目概述和技术细节 
