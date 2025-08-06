@@ -111,20 +111,23 @@ export function handleGitLabError(error: any) {
 import { McpServer } from "@modelcontextprotocol/sdk/server/mcp.js";
 import { StdioServerTransport } from "@modelcontextprotocol/sdk/server/stdio.js";
 import { 
-  GITLAB_URL, 
   checkGitLabToken, 
-  createAxiosInstance, 
-  formatProjects, 
+  getGitLabProjects, 
   handleGitLabError 
-} from "./utils.js";
+} from "./services/index.js";
+import { getServerConfig } from "./services/config.js";
+import { generateProjectsListText } from "./utils/index.js";
 
 // 检查GitLab token
 checkGitLabToken();
 
+// 获取服务器配置
+const serverConfig = getServerConfig();
+
 // 创建MCP服务器
 const server = new McpServer({
-  name: "gitlab-mcp-server",
-  version: "1.0.0"
+  name: serverConfig.name,
+  version: serverConfig.version
 });
 
 // 注册GitLab项目列表工具
@@ -136,7 +139,19 @@ server.registerTool(
     inputSchema: {}
   },
   async () => {
-    // 使用共享工具函数实现GitLab API调用和数据处理
+    try {
+      const projects = await getGitLabProjects();
+      const projectsText = generateProjectsListText(projects);
+      
+      return {
+        content: [{ type: "text", text: projectsText }]
+      };
+    } catch (error) {
+      const errorMessage = handleGitLabError(error);
+      return {
+        content: [{ type: "text", text: errorMessage }]
+      };
+    }
   }
 );
 ```
@@ -203,49 +218,55 @@ yarn http:dev
 
 ## 扩展性
 
-项目设计具有良好的扩展性，可以轻松添加新的GitLab功能：
+项目设计具有良好的扩展性，采用分层架构：
 
-1. **添加新工具**: 使用 `server.registerTool()` 注册新工具
-2. **共享工具函数**: 在 `src/utils.ts` 中添加新的工具函数
-3. **API集成**: 利用现有的axios配置和错误处理
-4. **类型安全**: 使用TypeScript进行类型验证
+1. **类型层** (`src/types/`): 定义所有接口和类型
+2. **服务层** (`src/services/`): 业务逻辑和API调用
+3. **工具层** (`src/utils/`): 通用工具函数
+4. **入口层** (`src/index.ts`, `src/http-server.ts`): 服务器启动和路由
 
 ### 扩展示例
 
+要添加新的GitLab功能：
+
+1. **定义类型** (`src/types/gitlab.ts`):
 ```typescript
-// 在 src/utils.ts 中添加新的工具函数
-export async function getProjectDetails(projectId: number) {
+export interface GitLabIssue {
+  id: number;
+  title: string;
+  description: string;
+}
+```
+
+2. **添加服务** (`src/services/gitlab.ts`):
+```typescript
+export async function getGitLabIssues(projectId: number): Promise<GitLabIssue[]> {
   const axiosInstance = createAxiosInstance();
-  const response = await axiosInstance.get(`${GITLAB_URL}/api/v4/projects/${projectId}`);
+  const response = await axiosInstance.get<GitLabIssue[]>(`${GITLAB_URL}/api/v4/projects/${projectId}/issues`);
   return response.data;
 }
+```
 
-// 在 src/index.ts 中注册新工具
+3. **注册工具** (`src/index.ts` 或 `src/http-server.ts`):
+```typescript
 server.registerTool(
-  "get_project_details",
+  "list_issues",
   {
-    title: "获取项目详情",
-    description: "获取指定项目的详细信息",
-    inputSchema: { projectId: z.number() }
-  },
-  async ({ projectId }) => {
-    try {
-      const projectDetails = await getProjectDetails(projectId);
-      return {
-        content: [{
-          type: "text",
-          text: `项目详情: ${JSON.stringify(projectDetails, null, 2)}`
-        }]
-      };
-    } catch (error) {
-      const errorMessage = handleGitLabError(error);
-      return {
-        content: [{
-          type: "text",
-          text: errorMessage
-        }]
-      };
+    title: "GitLab问题列表",
+    description: "获取指定项目的所有问题",
+    inputSchema: {
+      type: "object",
+      properties: {
+        projectId: { type: "number" }
+      },
+      required: ["projectId"]
     }
+  },
+  async (args) => {
+    const issues = await getGitLabIssues(args.projectId);
+    return {
+      content: [{ type: "text", text: formatIssues(issues) }]
+    };
   }
 );
 ```

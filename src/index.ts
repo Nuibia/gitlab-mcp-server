@@ -6,7 +6,7 @@ import {
   handleGitLabError 
 } from "./services/index.js";
 import { getServerConfig } from "./services/config.js";
-import { generateProjectsListText } from "./utils.js";
+import { generateProjectsListText } from "./utils/index.js";
 
 // 检查GitLab token
 checkGitLabToken();

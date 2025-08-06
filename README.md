@@ -214,9 +214,6 @@ getConfig(): Config
 
 // 获取服务器配置
 getServerConfig(): ServerConfig
-
-// 验证配置
-validateConfig(config: Config): void
 ```
 
 ## 开发

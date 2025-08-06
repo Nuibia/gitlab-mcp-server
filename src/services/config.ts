@@ -20,13 +20,4 @@ export function getServerConfig(): ServerConfig {
     version: "1.0.0",
     port: parseInt(process.env.PORT || "3000", 10)
   };
-}
-
-// 验证配置
-export function validateConfig(config: Config): void {
-  if (!config.gitlabToken) {
-    console.error("❌ 错误: 请设置GITLAB_TOKEN环境变量");
-    console.error("💡 提示: 请访问GitLab > Settings > Access Tokens 创建个人访问令牌");
-    process.exit(1);
-  }
 } 

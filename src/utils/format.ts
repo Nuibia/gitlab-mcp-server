@@ -1,3 +1,4 @@
+// 格式化相关的工具函数
 
 // 格式化日期
 export function formatDate(dateString: string): string {
