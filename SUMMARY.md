@@ -17,19 +17,27 @@
    - 基于TypeScript，类型安全
    - 使用最新的MCP SDK
    - 支持ES模块
+   - 模块化设计，共享工具函数
    - 完整的错误处理和日志记录
 
 3. **开发友好**
    - 热重载开发模式
+   - 智能构建（自动清理旧文件）
    - 详细的错误信息
    - 完整的文档和示例
+
+4. **内网支持**
+   - HTTP服务器模式
+   - 代理支持
+   - SSL证书验证配置
+   - 内网访问优化
 
 ## 技术栈
 
 - **TypeScript**: 类型安全的JavaScript
 - **MCP SDK**: Model Context Protocol官方SDK
 - **Axios**: HTTP客户端
-- **Zod**: 类型验证
+- **Express**: Web框架（HTTP服务器）
 - **Dotenv**: 环境变量管理
 
 ## 项目结构
@@ -37,27 +45,81 @@
 ```
 gitlab-mcp-server/
 ├── src/
-│   └── index.ts          # 主服务器文件
+│   ├── utils.ts          # 共享工具函数
+│   │   ├── GitLab API配置和认证
+│   │   ├── Axios实例创建（支持代理和SSL）
+│   │   ├── 项目数据格式化
+│   │   └── 错误处理
+│   ├── index.ts          # Stdio服务器实现
+│   └── http-server.ts    # HTTP服务器实现
 ├── dist/                 # 构建输出目录
 ├── package.json          # 项目配置
 ├── tsconfig.json         # TypeScript配置
 ├── env.example           # 环境变量示例
-├── test-server.js        # 测试脚本
+├── test-http-client.js   # HTTP客户端测试脚本
+├── test-server.js        # 服务器测试脚本
 ├── README.md            # 项目说明
 ├── USAGE.md             # 使用指南
+├── HTTP_SERVER_GUIDE.md # HTTP服务器指南
+├── INTRANET_GUIDE.md    # 内网访问指南
 └── SUMMARY.md           # 项目总结
 ```
 
 ## 核心代码
 
-### 主要实现 (`src/index.ts`)
+### 共享工具函数 (`src/utils.ts`)
+
+```typescript
+import axios from "axios";
+import https from "https";
+import dotenv from "dotenv";
+
+// 加载环境变量
+dotenv.config();
+
+// GitLab API配置
+export const GITLAB_URL = process.env.GITLAB_URL || "https://gitlab.xiaomawang.com/";
+export const GITLAB_TOKEN = process.env.GITLAB_TOKEN;
+
+// 检查GitLab token
+export function checkGitLabToken() {
+  if (!GITLAB_TOKEN) {
+    console.error("错误: 请设置GITLAB_TOKEN环境变量");
+    process.exit(1);
+  }
+}
+
+// 创建axios实例，支持内网访问
+export function createAxiosInstance() {
+  // 支持代理和SSL配置
+}
+
+// 格式化项目信息
+export function formatProjects(projects: GitLabProject[]) {
+  // 格式化项目数据
+}
+
+// 处理GitLab API错误
+export function handleGitLabError(error: any) {
+  // 统一的错误处理
+}
+```
+
+### 主服务器实现 (`src/index.ts`)
 
 ```typescript
 import { McpServer } from "@modelcontextprotocol/sdk/server/mcp.js";
 import { StdioServerTransport } from "@modelcontextprotocol/sdk/server/stdio.js";
-import { z } from "zod";
-import axios from "axios";
-import dotenv from "dotenv";
+import { 
+  GITLAB_URL, 
+  checkGitLabToken, 
+  createAxiosInstance, 
+  formatProjects, 
+  handleGitLabError 
+} from "./utils.js";
+
+// 检查GitLab token
+checkGitLabToken();
 
 // 创建MCP服务器
 const server = new McpServer({
@@ -74,8 +136,7 @@ server.registerTool(
     inputSchema: {}
   },
   async () => {
-    // 实现GitLab API调用和数据处理
-    // 返回格式化的项目列表
+    // 使用共享工具函数实现GitLab API调用和数据处理
   }
 );
 ```
@@ -92,7 +153,7 @@ yarn install
 cp env.example .env
 # 编辑 .env 文件，设置 GITLAB_TOKEN
 
-# 构建项目
+# 构建项目（自动清理旧文件）
 yarn build
 ```
 
@@ -104,6 +165,9 @@ yarn dev
 
 # 生产模式
 yarn start
+
+# HTTP服务器模式（推荐用于内网）
+yarn http:dev
 ```
 
 ### 3. 作为MCP客户端使用
@@ -126,7 +190,7 @@ yarn start
 ## 示例输出
 
 ```
-成功获取到 3 个项目:
+✅ 成功获取到 3 个项目:
 
 📁 **username/my-project**
    - 描述: 这是一个示例项目
@@ -142,12 +206,21 @@ yarn start
 项目设计具有良好的扩展性，可以轻松添加新的GitLab功能：
 
 1. **添加新工具**: 使用 `server.registerTool()` 注册新工具
-2. **API集成**: 利用现有的axios配置和错误处理
-3. **类型安全**: 使用TypeScript和Zod进行类型验证
+2. **共享工具函数**: 在 `src/utils.ts` 中添加新的工具函数
+3. **API集成**: 利用现有的axios配置和错误处理
+4. **类型安全**: 使用TypeScript进行类型验证
 
 ### 扩展示例
 
 ```typescript
+// 在 src/utils.ts 中添加新的工具函数
+export async function getProjectDetails(projectId: number) {
+  const axiosInstance = createAxiosInstance();
+  const response = await axiosInstance.get(`${GITLAB_URL}/api/v4/projects/${projectId}`);
+  return response.data;
+}
+
+// 在 src/index.ts 中注册新工具
 server.registerTool(
   "get_project_details",
   {
@@ -156,18 +229,36 @@ server.registerTool(
     inputSchema: { projectId: z.number() }
   },
   async ({ projectId }) => {
-    // 实现项目详情获取逻辑
+    try {
+      const projectDetails = await getProjectDetails(projectId);
+      return {
+        content: [{
+          type: "text",
+          text: `项目详情: ${JSON.stringify(projectDetails, null, 2)}`
+        }]
+      };
+    } catch (error) {
+      const errorMessage = handleGitLabError(error);
+      return {
+        content: [{
+          type: "text",
+          text: errorMessage
+        }]
+      };
+    }
   }
 );
 ```
 
 ## 最佳实践
 
-1. **错误处理**: 完整的try-catch错误处理
+1. **错误处理**: 统一的错误处理函数
 2. **日志记录**: 详细的日志输出
-3. **类型安全**: 使用TypeScript和Zod
+3. **类型安全**: 使用TypeScript
 4. **环境配置**: 使用dotenv管理环境变量
-5. **文档完整**: 提供详细的使用文档
+5. **模块化设计**: 共享工具函数，避免代码重复
+6. **智能构建**: 自动清理旧文件，确保构建干净
+7. **文档完整**: 提供详细的使用文档
 
 ## 未来改进
 
@@ -194,7 +285,10 @@ server.registerTool(
 
 - ✅ 基于最新MCP SDK的现代化架构
 - ✅ 类型安全的TypeScript实现
+- ✅ 模块化设计，共享工具函数
 - ✅ 完整的GitLab项目列表功能
+- ✅ HTTP服务器模式，支持内网访问
+- ✅ 智能构建，自动清理旧文件
 - ✅ 详细的文档和示例
 - ✅ 良好的错误处理和日志记录
 - ✅ 易于扩展的设计

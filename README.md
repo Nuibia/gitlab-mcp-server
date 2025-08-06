@@ -6,9 +6,10 @@
 
 - 🔍 **查看所有项目**: 获取GitLab实例中的所有项目列表
 - 📊 **项目详情**: 显示项目名称、描述、可见性、星标数、分支数等信息
-- 🎯 **简洁易用**: 单一文件实现，专注于核心功能
+- 🎯 **模块化设计**: 共享工具函数，避免代码重复
 - 🚀 **现代化架构**: 基于最新的MCP SDK和TypeScript
 - 🌐 **HTTP服务器**: 支持HTTP传输，解决内网访问问题
+- 🧹 **智能构建**: 自动清理旧文件，确保构建干净
 
 ## 安装和设置
 
@@ -37,6 +38,13 @@ GITLAB_TOKEN=your_gitlab_personal_access_token
 # 服务器配置
 PORT=3000
 NODE_ENV=development
+
+# 代理配置（可选）
+HTTP_PROXY=http://proxy.company.com:8080
+HTTPS_PROXY=http://proxy.company.com:8080
+
+# SSL证书验证（内网GitLab可能需要）
+VERIFY_SSL=false
 ```
 
 ### 3. 获取GitLab访问令牌
@@ -47,6 +55,19 @@ NODE_ENV=development
 4. 复制令牌并粘贴到 `.env` 文件的 `GITLAB_TOKEN` 变量中
 
 ## 使用方法
+
+### 构建项目
+
+```bash
+# 清理并构建（推荐）
+yarn build
+
+# 仅清理构建目录
+yarn clean
+
+# 监听模式构建（开发时使用）
+yarn build:watch
+```
 
 ### 方式一：HTTP服务器（推荐用于内网环境）
 
@@ -130,7 +151,6 @@ yarn start
 - **MCP SDK**: Model Context Protocol官方SDK
 - **Axios**: HTTP客户端
 - **Express**: Web框架（HTTP服务器）
-- **Zod**: 类型验证
 - **Dotenv**: 环境变量管理
 
 ## 项目结构
@@ -139,12 +159,14 @@ yarn start
 gitlab-mcp-server/
 ├── src/
 │   ├── index.ts          # Stdio服务器文件
-│   └── http-server.ts    # HTTP服务器文件
+│   ├── http-server.ts    # HTTP服务器文件
+│   └── utils.ts          # 共享工具函数
 ├── dist/                 # 构建输出目录
 ├── package.json          # 项目配置
 ├── tsconfig.json         # TypeScript配置
 ├── env.example           # 环境变量示例
-├── test-server.js        # 测试脚本
+├── test-http-client.js   # HTTP客户端测试脚本
+├── test-server.js        # 服务器测试脚本
 ├── README.md            # 项目说明
 ├── USAGE.md             # 使用指南
 ├── HTTP_SERVER_GUIDE.md # HTTP服务器指南
@@ -156,12 +178,13 @@ gitlab-mcp-server/
 
 ### 代码结构
 
+- `src/utils.ts`: 共享工具函数
+  - GitLab API配置和认证
+  - Axios实例创建（支持代理和SSL）
+  - 项目数据格式化
+  - 错误处理
 - `src/index.ts`: Stdio版本的MCP服务器实现
 - `src/http-server.ts`: HTTP版本的MCP服务器实现
-  - GitLab API集成
-  - MCP工具定义
-  - 错误处理
-  - 日志记录
 
 ### 添加新功能
 

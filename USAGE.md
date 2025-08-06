@@ -28,13 +28,28 @@ GITLAB_URL=https://gitlab.com
 GITLAB_TOKEN=your_actual_gitlab_token_here
 
 # 服务器配置
+PORT=3000
 NODE_ENV=development
+
+# 代理配置（可选）
+HTTP_PROXY=http://proxy.company.com:8080
+HTTPS_PROXY=http://proxy.company.com:8080
+
+# SSL证书验证（内网GitLab可能需要）
+VERIFY_SSL=false
 ```
 
 ### 4. 构建项目
 
 ```bash
+# 清理并构建（推荐）
 yarn build
+
+# 仅清理构建目录
+yarn clean
+
+# 监听模式构建（开发时使用）
+yarn build:watch
 ```
 
 ### 5. 运行服务器
@@ -45,6 +60,9 @@ yarn dev
 
 # 或者生产模式
 yarn start
+
+# HTTP服务器模式（推荐用于内网）
+yarn http:dev
 ```
 
 ## 使用示例
@@ -84,7 +102,7 @@ yarn start
 
 **示例输出**:
 ```
-成功获取到 3 个项目:
+✅ 成功获取到 3 个项目:
 
 📁 **username/my-project**
    - 描述: 这是一个示例项目
@@ -101,6 +119,23 @@ yarn start
    - 星标: 0 | 分支: 0
    - 链接: https://gitlab.com/username/another-project
    - 最后更新: 2024/1/10 09:15:30
+```
+
+## 项目结构
+
+```
+gitlab-mcp-server/
+├── src/
+│   ├── utils.ts          # 共享工具函数
+│   │   ├── GitLab API配置和认证
+│   │   ├── Axios实例创建（支持代理和SSL）
+│   │   ├── 项目数据格式化
+│   │   └── 错误处理
+│   ├── index.ts          # Stdio服务器实现
+│   └── http-server.ts    # HTTP服务器实现
+├── dist/                 # 构建输出目录
+├── test-http-client.js   # HTTP客户端测试脚本
+└── test-server.js        # 服务器测试脚本
 ```
 
 ## 故障排除
@@ -120,6 +155,11 @@ yarn start
    - 运行 `yarn install` 确保所有依赖已安装
    - 检查TypeScript版本是否兼容
 
+4. **内网访问问题**
+   - 配置代理设置（如需要）
+   - 设置 `VERIFY_SSL=false`（如使用自签名证书）
+   - 使用HTTP服务器模式
+
 ### 调试模式
 
 设置 `NODE_ENV=development` 来启用详细日志输出。
@@ -128,13 +168,22 @@ yarn start
 
 要添加新的GitLab功能，你可以：
 
-1. 在 `src/index.ts` 中添加新的工具
-2. 使用 `server.registerTool()` 注册工具
-3. 实现相应的GitLab API调用
+1. 在 `src/utils.ts` 中添加共享工具函数
+2. 在 `src/index.ts` 或 `src/http-server.ts` 中添加新的工具
+3. 使用 `server.registerTool()` 注册工具
+4. 实现相应的GitLab API调用
 
 示例：
 
 ```typescript
+// 在 src/utils.ts 中添加新的工具函数
+export async function getProjectDetails(projectId: number) {
+  const axiosInstance = createAxiosInstance();
+  const response = await axiosInstance.get(`${GITLAB_URL}/api/v4/projects/${projectId}`);
+  return response.data;
+}
+
+// 在 src/index.ts 中注册新工具
 server.registerTool(
   "get_project_details",
   {
@@ -143,20 +192,23 @@ server.registerTool(
     inputSchema: { projectId: z.number() }
   },
   async ({ projectId }) => {
-    // 实现项目详情获取逻辑
-    const response = await axios.get(`${GITLAB_URL}/api/v4/projects/${projectId}`, {
-      headers: {
-        "Authorization": `Bearer ${GITLAB_TOKEN}`,
-        "Content-Type": "application/json"
-      }
-    });
-    
-    return {
-      content: [{
-        type: "text",
-        text: `项目详情: ${JSON.stringify(response.data, null, 2)}`
-      }]
-    };
+    try {
+      const projectDetails = await getProjectDetails(projectId);
+      return {
+        content: [{
+          type: "text",
+          text: `项目详情: ${JSON.stringify(projectDetails, null, 2)}`
+        }]
+      };
+    } catch (error) {
+      const errorMessage = handleGitLabError(error);
+      return {
+        content: [{
+          type: "text",
+          text: errorMessage
+        }]
+      };
+    }
   }
 );
 ```
