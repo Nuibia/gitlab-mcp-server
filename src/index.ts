@@ -1,22 +1,23 @@
 import { McpServer } from "@modelcontextprotocol/sdk/server/mcp.js";
 import { StdioServerTransport } from "@modelcontextprotocol/sdk/server/stdio.js";
 import { 
-  GITLAB_URL, 
-  GITLAB_TOKEN, 
   checkGitLabToken, 
-  createAxiosInstance, 
-  GitLabProject, 
-  formatProjects, 
+  getGitLabProjects, 
   handleGitLabError 
-} from "./utils.js";
+} from "./services/index.js";
+import { getServerConfig } from "./services/config.js";
+import { generateProjectsListText } from "./utils.js";
 
 // 检查GitLab token
 checkGitLabToken();
 
+// 获取服务器配置
+const serverConfig = getServerConfig();
+
 // 创建MCP服务器
 const server = new McpServer({
-  name: "gitlab-mcp-server",
-  version: "1.0.0"
+  name: serverConfig.name,
+  version: serverConfig.version
 });
 
 // 注册GitLab项目列表工具
@@ -30,35 +31,15 @@ server.registerTool(
   async () => {
     try {
       console.log("正在获取GitLab项目列表...");
-      console.log(`📡 目标GitLab: ${GITLAB_URL}`);
       
-      const axiosInstance = createAxiosInstance();
-      
-      // 调用GitLab API获取项目列表
-      const response = await axiosInstance.get(`${GITLAB_URL}/api/v4/projects`, {
-        params: {
-          per_page: 100, // 每页100个项目
-          order_by: "updated_at",
-          sort: "desc"
-        }
-      });
-
-      const projects: GitLabProject[] = response.data;
-      const formattedProjects = formatProjects(projects);
+      const projects = await getGitLabProjects();
+      const projectsText = generateProjectsListText(projects);
       
       return {
         content: [
           {
             type: "text",
-            text: `✅ 成功获取到 ${formattedProjects.length} 个项目:\n\n${formattedProjects.map(project => 
-              `📁 **${project.fullName}**\n` +
-              `   - 描述: ${project.description}\n` +
-              `   - 可见性: ${project.visibility}\n` +
-              `   - 默认分支: ${project.defaultBranch}\n` +
-              `   - 星标: ${project.stars} | 分支: ${project.forks}\n` +
-              `   - 链接: ${project.url}\n` +
-              `   - 最后更新: ${new Date(project.updatedAt).toLocaleString('zh-CN')}\n`
-            ).join('\n')}`
+            text: projectsText
           }
         ]
       };
@@ -80,7 +61,6 @@ server.registerTool(
 async function main() {
   try {
     console.log("🚀 启动GitLab MCP服务器...");
-    console.log(`📡 GitLab URL: ${GITLAB_URL}`);
     
     const transport = new StdioServerTransport();
     await server.connect(transport);
@@ -98,13 +78,5 @@ process.on("SIGINT", () => {
   process.exit(0);
 });
 
-process.on("SIGTERM", () => {
-  console.log("\n🛑 正在关闭GitLab MCP服务器...");
-  process.exit(0);
-});
-
 // 启动服务器
-main().catch((error) => {
-  console.error("❌ 服务器启动失败:", error);
-  process.exit(1);
-}); 
+main(); 

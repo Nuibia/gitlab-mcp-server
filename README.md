@@ -11,48 +11,83 @@
 - 🌐 **HTTP服务器**: 支持HTTP传输，解决网络访问问题
 - 🧹 **智能构建**: 自动清理旧文件，确保构建干净
 - 🔒 **VPN支持**: 支持VPN环境下的GitLab访问
+- 🏗️ **模块化设计**: 分层架构，易于维护和扩展
+
+## 项目结构
+
+```
+gitlab-mcp-server/
+├── README.md                    # 项目说明
+├── docs/                        # 文档文件夹
+│   ├── USAGE.md                # 使用指南
+│   ├── EXAMPLES.md             # 使用实例
+│   ├── HTTP_SERVER_GUIDE.md    # HTTP服务器指南
+│   └── SUMMARY.md              # 项目总结
+├── src/                         # 源代码
+│   ├── index.ts               # 主入口文件（Stdio版本）
+│   ├── http-server.ts         # HTTP服务器版本
+│   ├── utils.ts               # 通用工具函数
+│   ├── types/                 # 类型定义
+│   │   ├── index.ts
+│   │   ├── gitlab.ts
+│   │   └── config.ts
+│   └── services/              # 服务层
+│       ├── index.ts
+│       ├── gitlab.ts
+│       └── config.ts
+├── env.example                 # 环境变量示例
+├── package.json                # 项目配置
+├── tsconfig.json              # TypeScript配置
+└── .gitignore                 # Git忽略文件
+```
+
+## 技术栈
+
+- **TypeScript**: 类型安全的JavaScript超集
+- **Model Context Protocol SDK**: 官方MCP SDK
+- **Express**: Web框架（HTTP服务器版本）
+- **Axios**: HTTP客户端
+- **Dotenv**: 环境变量管理
+- **CORS**: 跨域资源共享
 
 ## 安装和设置
 
-### 1. 安装依赖
+### 1. 克隆项目
 
 ```bash
-# 使用yarn安装依赖
+git clone <repository-url>
+cd gitlab-mcp-server
+```
+
+### 2. 安装依赖
+
+```bash
 yarn install
 ```
 
-### 2. 环境配置
-
-复制环境变量示例文件并配置：
+### 3. 配置环境变量
 
 ```bash
 cp env.example .env
 ```
 
-编辑 `.env` 文件，设置以下变量：
+编辑 `.env` 文件：
 
 ```env
 # GitLab配置
-GITLAB_URL=https://gitlab.xiaomawang.com/
-GITLAB_TOKEN=your_gitlab_personal_access_token
+GITLAB_URL=https://gitlab.com/
+GITLAB_TOKEN=glpat-xxxxxxxxxxxxxxxxxxxx
 
 # 服务器配置
 PORT=3000
 NODE_ENV=development
-
-# 代理配置（可选）
-HTTP_PROXY=http://proxy.company.com:8080
-HTTPS_PROXY=http://proxy.company.com:8080
-
-# SSL证书验证（内网GitLab可能需要）
-VERIFY_SSL=false
 ```
 
-### 3. 获取GitLab访问令牌
+### 4. 获取GitLab访问令牌
 
-1. 登录到你的GitLab账户
+1. 访问你的GitLab实例
 2. 进入 **Settings** > **Access Tokens**
-3. 创建一个新的个人访问令牌，确保勾选 `read_api` 权限
+3. 创建新的个人访问令牌，确保勾选 `read_api` 权限
 4. 复制令牌并粘贴到 `.env` 文件的 `GITLAB_TOKEN` 变量中
 
 ## 使用方法
@@ -60,140 +95,174 @@ VERIFY_SSL=false
 ### 构建项目
 
 ```bash
-# 清理并构建（推荐）
+# 清理并构建
 yarn build
 
-# 仅清理构建目录
-yarn clean
-
-# 监听模式构建（开发时使用）
+# 监听模式构建
 yarn build:watch
 ```
 
-### 方式一：HTTP服务器（推荐用于内网环境）
+### 启动服务器
 
-#### 开发模式运行
+#### Stdio版本（推荐用于MCP客户端）
+
 ```bash
-yarn http:dev
-```
+# 生产模式
+yarn start
 
-#### 生产模式运行
-```bash
-yarn build
-yarn http
-```
-
-#### 测试服务器
-```bash
-# 检查服务器状态
-curl http://localhost:3000/health
-
-# 测试MCP连接
-curl -X POST http://localhost:3000/mcp \
-  -H "Content-Type: application/json" \
-  -d '{"jsonrpc":"2.0","id":1,"method":"initialize","params":{"protocolVersion":"2024-11-05","capabilities":{},"clientInfo":{"name":"test","version":"1.0.0"}}}'
-```
-
-### 方式二：Stdio服务器（传统方式）
-
-#### 开发模式运行
-```bash
+# 开发模式
 yarn dev
 ```
 
-#### 生产模式运行
+#### HTTP版本（推荐用于内网环境）
+
 ```bash
-yarn build
-yarn start
+# 生产模式
+yarn http
+
+# 开发模式（热重载）
+yarn http:dev
 ```
 
-## MCP工具
+### 验证安装
 
-### list_projects
+#### HTTP版本验证
 
-获取所有GitLab项目列表。
+```bash
+# 健康检查
+curl http://localhost:3000/health
 
-**参数**: 无
-
-**返回**: 项目列表，包含以下信息：
-- 项目名称和完整路径
-- 项目描述
-- 可见性设置
-- 默认分支
-- 星标数和分支数
-- 项目链接
-- 最后更新时间
-
-## 示例输出
-
-```
-✅ 成功获取到 5 个项目:
-
-📁 **username/my-project**
-   - 描述: 这是一个示例项目
-   - 可见性: private
-   - 默认分支: main
-   - 星标: 3 | 分支: 1
-   - 链接: https://gitlab.com/username/my-project
-   - 最后更新: 2024/1/15 14:30:25
-
-📁 **username/another-project**
-   - 描述: 另一个项目
-   - 可见性: public
-   - 默认分支: develop
-   - 星标: 0 | 分支: 0
-   - 链接: https://gitlab.com/username/another-project
-   - 最后更新: 2024/1/10 09:15:30
+# 预期输出
+{
+  "status": "ok",
+  "timestamp": "2024-01-15T14:30:25.123Z",
+  "gitlabUrl": "https://gitlab.com/",
+  "hasToken": true
+}
 ```
 
-## 技术栈
+## MCP客户端配置
 
-- **TypeScript**: 类型安全的JavaScript
-- **MCP SDK**: Model Context Protocol官方SDK
-- **Axios**: HTTP客户端
-- **Express**: Web框架（HTTP服务器）
-- **Dotenv**: 环境变量管理
+### Claude Desktop配置
 
-## 项目结构
-
+```json
+{
+  "mcpServers": {
+    "gitlab": {
+      "command": "node",
+      "args": ["/path/to/gitlab-mcp-server/dist/index.js"],
+      "env": {
+        "GITLAB_URL": "https://gitlab.com/",
+        "GITLAB_TOKEN": "your_token_here"
+      }
+    }
+  }
+}
 ```
-gitlab-mcp-server/
-├── src/
-│   ├── index.ts          # Stdio服务器文件
-│   ├── http-server.ts    # HTTP服务器文件
-│   └── utils.ts          # 共享工具函数
-├── dist/                 # 构建输出目录
-├── package.json          # 项目配置
-├── tsconfig.json         # TypeScript配置
-├── env.example           # 环境变量示例
-├── test-http-client.js   # HTTP客户端测试脚本
-├── test-server.js        # 服务器测试脚本
-├── README.md            # 项目说明
-├── USAGE.md             # 使用指南
-├── HTTP_SERVER_GUIDE.md # HTTP服务器指南
-├── INTRANET_GUIDE.md    # 内网访问指南
-└── SUMMARY.md           # 项目总结
+
+### HTTP版本配置
+
+```json
+{
+  "mcpServers": {
+    "gitlab": {
+      "transport": "http",
+      "url": "http://localhost:3000/mcp",
+      "env": {
+        "GITLAB_URL": "https://gitlab.com/",
+        "GITLAB_TOKEN": "your_token_here"
+      }
+    }
+  }
+}
+```
+
+## 代码架构
+
+### 分层设计
+
+- **类型层** (`src/types/`): 定义所有接口和类型
+- **服务层** (`src/services/`): 业务逻辑和API调用
+- **工具层** (`src/utils.ts`): 通用工具函数
+- **入口层** (`src/index.ts`, `src/http-server.ts`): 服务器启动和路由
+
+### 核心服务
+
+#### GitLab服务 (`src/services/gitlab.ts`)
+
+```typescript
+// 检查GitLab token
+checkGitLabToken(): void
+
+// 创建axios实例
+createAxiosInstance(): AxiosInstance
+
+// 格式化项目信息
+formatProjects(projects: GitLabProject[]): FormattedProject[]
+
+// 获取GitLab项目列表
+getGitLabProjects(): Promise<FormattedProject[]>
+
+// 处理GitLab API错误
+handleGitLabError(error: any): string
+```
+
+#### 配置服务 (`src/services/config.ts`)
+
+```typescript
+// 获取环境配置
+getConfig(): Config
+
+// 获取服务器配置
+getServerConfig(): ServerConfig
+
+// 验证配置
+validateConfig(config: Config): void
 ```
 
 ## 开发
 
-### 代码结构
-
-- `src/utils.ts`: 共享工具函数
-  - GitLab API配置和认证
-  - Axios实例创建（支持代理和SSL）
-  - 项目数据格式化
-  - 错误处理
-- `src/index.ts`: Stdio版本的MCP服务器实现
-- `src/http-server.ts`: HTTP版本的MCP服务器实现
-
 ### 添加新功能
 
-要添加新的GitLab功能，只需在相应的服务器文件中：
+1. **定义类型** (`src/types/gitlab.ts`):
+```typescript
+export interface GitLabIssue {
+  id: number;
+  title: string;
+  description: string;
+}
+```
 
-1. 使用 `server.registerTool()` 注册新工具
-2. 实现相应的GitLab API调用
-3. 处理错误和返回格式化结果
+2. **添加服务** (`src/services/gitlab.ts`):
+```typescript
+export async function getGitLabIssues(projectId: number): Promise<GitLabIssue[]> {
+  // 实现逻辑
+}
+```
+
+3. **注册工具** (`src/index.ts` 或 `src/http-server.ts`):
+```typescript
+server.registerTool(
+  "list_issues",
+  {
+    title: "GitLab问题列表",
+    description: "获取指定项目的所有问题",
+    inputSchema: {
+      type: "object",
+      properties: {
+        projectId: { type: "number" }
+      },
+      required: ["projectId"]
+    }
+  },
+  async (args) => {
+    const issues = await getGitLabIssues(args.projectId);
+    return {
+      content: [{ type: "text", text: formatIssues(issues) }]
+    };
+  }
+);
+```
 
 ## 故障排除
 
@@ -203,7 +272,6 @@ gitlab-mcp-server/
 2. **网络错误**: 检查 `GITLAB_URL` 是否正确，确保网络连接正常
 3. **权限不足**: 确保访问令牌具有足够的权限来读取项目信息
 4. **编译错误**: 确保已安装所有依赖并运行 `yarn build`
-5. **内网访问问题**: 使用HTTP服务器版本，参考 `INTRANET_GUIDE.md`
 
 ### 调试模式
 
@@ -218,7 +286,7 @@ gitlab-mcp-server/
 - 🔍 工具调用信息
 - ❌ 错误信息
 
-## 内网访问
+## 网络访问
 
 如果你的GitLab在内网，推荐使用HTTP服务器版本：
 
@@ -227,8 +295,15 @@ gitlab-mcp-server/
 3. **测试连接**: 访问 `http://localhost:3000/health`
 
 详细说明请参考：
-- [HTTP服务器指南](HTTP_SERVER_GUIDE.md)
-- [内网访问指南](INTRANET_GUIDE.md)
+- [HTTP服务器指南](docs/HTTP_SERVER_GUIDE.md)
+- [使用实例](docs/EXAMPLES.md)
+
+## 文档
+
+- [使用指南](docs/USAGE.md) - 详细的使用说明
+- [使用实例](docs/EXAMPLES.md) - 各种场景的使用实例
+- [HTTP服务器指南](docs/HTTP_SERVER_GUIDE.md) - HTTP服务器模式使用指南
+- [项目总结](docs/SUMMARY.md) - 项目概述和技术细节
 
 ## 许可证
 
@@ -241,12 +316,4 @@ MIT License
 ## 相关链接
 
 - [Model Context Protocol](https://modelcontextprotocol.io/)
-- [MCP TypeScript SDK](https://github.com/modelcontextprotocol/typescript-sdk)
-- [GitLab API文档](https://docs.gitlab.com/ee/api/)
-
-## 文档
-
-- [使用指南](USAGE.md) - 详细的使用说明
-- [使用实例](EXAMPLES.md) - 各种场景的使用实例
-- [HTTP服务器指南](HTTP_SERVER_GUIDE.md) - HTTP服务器模式使用指南
-- [项目总结](SUMMARY.md) - 项目概述和技术细节 
+- [GitLab API Documentation](https://docs.gitlab.com/ee/api/) 
