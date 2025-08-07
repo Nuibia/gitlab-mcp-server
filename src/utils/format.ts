@@ -1,8 +1,22 @@
 // 格式化相关的工具函数
+import { GitLabBranch, ProjectWithBranches } from "../types/index.js";
 
 // 格式化日期
 export function formatDate(dateString: string): string {
   return new Date(dateString).toLocaleString('zh-CN');
+}
+
+// 格式化分支信息
+export function formatBranchDisplayText(branch: GitLabBranch): string {
+  const status = branch.default ? "🌿 默认分支" : 
+                 branch.protected ? "🛡️ 受保护分支" : 
+                 branch.merged ? "✅ 已合并" : "🌱 活跃分支";
+  
+  return `   ${status} **${branch.name}**\n` +
+    `      - 最新提交: ${branch.commit.short_id} - ${branch.commit.title}\n` +
+    `      - 作者: ${branch.commit.author_name}\n` +
+    `      - 提交时间: ${formatDate(branch.commit.committed_date)}\n` +
+    `      - 链接: ${branch.web_url}`;
 }
 
 // 格式化项目显示文本
@@ -16,9 +30,39 @@ export function formatProjectDisplayText(project: any): string {
     `   - 最后更新: ${formatDate(project.updatedAt)}\n`;
 }
 
+// 格式化包含分支的项目显示文本
+export function formatProjectWithBranchesDisplayText(project: ProjectWithBranches): string {
+  let text = `📁 **${project.fullName}**\n` +
+    `   - 描述: ${project.description}\n` +
+    `   - 可见性: ${project.visibility}\n` +
+    `   - 默认分支: ${project.defaultBranch}\n` +
+    `   - 星标: ${project.stars} | 分支: ${project.forks}\n` +
+    `   - 链接: ${project.url}\n` +
+    `   - 最后更新: ${formatDate(project.updatedAt)}\n` +
+    `   - 匹配分支 (${project.branches.length} 个):\n`;
+  
+  // 添加分支信息
+  project.branches.forEach(branch => {
+    text += formatBranchDisplayText(branch) + '\n';
+  });
+  
+  return text;
+}
+
 // 生成项目列表文本
 export function generateProjectsListText(projects: any[]): string {
   return `✅ 成功获取到 ${projects.length} 个项目:\n\n${projects.map(project => 
     formatProjectDisplayText(project)
   ).join('\n')}`;
+}
+
+// 生成包含分支的项目列表文本
+export function generateProjectsWithBranchesListText(projects: ProjectWithBranches[], branchName: string): string {
+  if (projects.length === 0) {
+    return `🔍 未找到包含分支名 "${branchName}" 的项目。`;
+  }
+  
+  return `✅ 找到 ${projects.length} 个包含分支名 "${branchName}" 的项目:\n\n${projects.map(project => 
+    formatProjectWithBranchesDisplayText(project)
+  ).join('\n\n')}`;
 } 

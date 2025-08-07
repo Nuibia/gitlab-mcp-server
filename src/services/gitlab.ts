@@ -1,6 +1,6 @@
 import axios, { AxiosInstance } from "axios";
 import https from "https";
-import { GitLabProject, FormattedProject, GitLabApiResponse } from "../types/index.js";
+import { GitLabProject, FormattedProject, GitLabApiResponse, GitLabBranch, ProjectWithBranches } from "../types/index.js";
 
 // GitLab API配置
 const GITLAB_URL = process.env.GITLAB_URL || "https://gitlab.com/";
@@ -62,6 +62,63 @@ export async function getGitLabProjects(): Promise<FormattedProject[]> {
   });
 
   return formatProjects(response.data);
+}
+
+// 获取项目的分支列表
+export async function getProjectBranches(projectId: number): Promise<GitLabBranch[]> {
+  const axiosInstance = createAxiosInstance();
+  
+  try {
+    const response = await axiosInstance.get<GitLabBranch[]>(`${GITLAB_URL}/api/v4/projects/${projectId}/repository/branches`, {
+      params: {
+        per_page: 100 // 每页100个分支
+      }
+    });
+    
+    return response.data;
+  } catch (error) {
+    console.warn(`⚠️ 获取项目 ${projectId} 的分支失败:`, error);
+    return [];
+  }
+}
+
+// 获取包含指定分支名的所有项目
+export async function getProjectsWithBranch(branchName: string): Promise<ProjectWithBranches[]> {
+  const axiosInstance = createAxiosInstance();
+  
+  try {
+    // 首先获取所有项目
+    const projects = await getGitLabProjects();
+    const projectsWithBranches: ProjectWithBranches[] = [];
+    
+    console.log(`🔍 正在搜索包含分支 "${branchName}" 的项目...`);
+    
+    // 遍历每个项目，检查是否包含指定分支
+    for (const project of projects) {
+      try {
+        const branches = await getProjectBranches(project.id);
+        
+        // 检查是否包含指定分支名
+        const matchingBranches = branches.filter(branch => 
+          branch.name.toLowerCase().includes(branchName.toLowerCase())
+        );
+        
+        if (matchingBranches.length > 0) {
+          projectsWithBranches.push({
+            ...project,
+            branches: matchingBranches
+          });
+        }
+      } catch (error) {
+        console.warn(`⚠️ 获取项目 ${project.name} 的分支失败:`, error);
+        continue;
+      }
+    }
+    
+    return projectsWithBranches;
+  } catch (error) {
+    throw error;
+  }
 }
 
 // 处理GitLab API错误

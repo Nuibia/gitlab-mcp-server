@@ -1,12 +1,14 @@
 import { McpServer } from "@modelcontextprotocol/sdk/server/mcp.js";
 import { StdioServerTransport } from "@modelcontextprotocol/sdk/server/stdio.js";
+import { z } from "zod";
 import { 
   checkGitLabToken, 
   getGitLabProjects, 
+  getProjectsWithBranch,
   handleGitLabError 
 } from "./services/index.js";
 import { getServerConfig } from "./services/config.js";
-import { generateProjectsListText } from "./utils/index.js";
+import { generateProjectsListText, generateProjectsWithBranchesListText } from "./utils/index.js";
 
 // 检查GitLab token
 checkGitLabToken();
@@ -34,6 +36,44 @@ server.registerTool(
       
       const projects = await getGitLabProjects();
       const projectsText = generateProjectsListText(projects);
+      
+      return {
+        content: [
+          {
+            type: "text",
+            text: projectsText
+          }
+        ]
+      };
+    } catch (error) {
+      const errorMessage = handleGitLabError(error);
+      return {
+        content: [
+          {
+            type: "text",
+            text: errorMessage
+          }
+        ]
+      };
+    }
+  }
+);
+
+// 注册获取包含指定分支名的项目工具
+server.registerTool(
+  "list_projects_with_branch",
+  {
+    title: "获取包含指定分支名的项目",
+    description: "获取所有包含指定分支名的GitLab项目",
+    inputSchema: {
+     branchName: z.string().default("feature/add-voice")
+    }
+  },
+  async ({branchName}) => {
+    try {
+      console.log("正在搜索包含指定分支名的项目...");
+      const projects = await getProjectsWithBranch(branchName);
+      const projectsText = generateProjectsWithBranchesListText(projects, branchName);
       
       return {
         content: [
