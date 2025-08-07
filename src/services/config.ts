@@ -1,4 +1,5 @@
-import { Config, ServerConfig } from "../types/index.js";
+import { Config } from "../types/index.js";
+import { Implementation } from "@modelcontextprotocol/sdk/types.js";
 
 // 获取环境配置
 export function getConfig(): Config {
@@ -10,10 +11,9 @@ export function getConfig(): Config {
 }
 
 // 获取服务器配置
-export function getServerConfig(): ServerConfig {
+export function getServerConfig(): Implementation {
   return {
     name: "gitlab-mcp-server",
-    version: "1.0.0",
-    port: parseInt(process.env.PORT || "3000", 10)
+    version: "1.0.0"
   };
 } 

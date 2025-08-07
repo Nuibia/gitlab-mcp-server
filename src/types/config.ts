@@ -5,13 +5,6 @@ export interface Config {
   port: number;
 }
 
-// 服务器配置接口
-export interface ServerConfig {
-  name: string;
-  version: string;
-  port?: number;
-}
-
 // Axios配置接口
 export interface AxiosConfig {
   timeout: number;

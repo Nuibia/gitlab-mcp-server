@@ -212,7 +212,7 @@ handleGitLabError(error: any): string
 getConfig(): Config
 
 // 获取服务器配置
-getServerConfig(): ServerConfig
+getServerConfig(): Implementation
 ```
 
 ## 开发
