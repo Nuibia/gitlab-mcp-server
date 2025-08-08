@@ -24,7 +24,8 @@ features:
 
 ## 接下来
 
-- 快速上手：见「快速开始」
-- HTTP 模式：见「HTTP 模式」
-- 工具列表：见「工具参考」
+- 使用方式：见「[使用方式（以 Cursor 为例）](/USAGE)」
+- 快速上手：见「[快速开始](/guide/quickstart)」
+- HTTP 模式：见「[HTTP 模式](/guide/http)」
+- 工具列表：见「[工具参考](/reference/tools)」
 
