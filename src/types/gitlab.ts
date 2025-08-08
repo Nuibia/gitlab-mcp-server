@@ -44,17 +44,3 @@ export interface GitLabBranch {
 export interface ProjectWithBranches extends GitLabProject {
   branches: GitLabBranch[];
 }
-
-// GitLab API响应类型
-export interface GitLabApiResponse<T> {
-  data: T;
-  status: number;
-  statusText: string;
-}
-
-// GitLab错误响应
-export interface GitLabErrorResponse {
-  message?: string;
-  error?: string;
-  status?: number;
-} 

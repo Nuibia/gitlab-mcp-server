@@ -4,15 +4,3 @@ export interface Config {
   gitlabToken: string;
   port: number;
 }
-
-// Axios配置接口
-export interface AxiosConfig {
-  timeout: number;
-  headers: Record<string, string>;
-  httpsAgent?: any;
-  proxy?: {
-    host: string;
-    port: number;
-    protocol: string;
-  };
-} 
