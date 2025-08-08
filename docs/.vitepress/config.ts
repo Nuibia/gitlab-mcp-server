@@ -8,42 +8,49 @@ export default defineConfig({
   lastUpdated: true,
   themeConfig: {
     nav: [
-      { text: '使用指南', link: '/USAGE' },
-      { text: 'HTTP 模式', link: '/HTTP_SERVER_GUIDE' },
-      { text: '使用实例', link: '/EXAMPLES' },
-      { text: '分支功能', link: '/BRANCH_FEATURE' },
-      { text: '代码规则', link: '/CODING_RULES' },
-      { text: '项目总结', link: '/SUMMARY' }
+      { text: '快速开始', link: '/guide/quickstart' },
+      { text: 'HTTP 模式', link: '/guide/http' },
+      { text: '工具参考', link: '/reference/tools' },
+      { text: '场景示例', link: '/recipes/examples' },
+      { text: '代码规范', link: '/contributing/coding-rules' },
+      { text: '部署', link: '/DEPLOYMENT' }
     ],
-    sidebar: [
-      {
-        text: '快速开始',
-        items: [
-          { text: '项目首页', link: '/' },
-          { text: '使用指南', link: '/USAGE' }
-        ]
-      },
-      {
-        text: '运行模式',
-        items: [
-          { text: 'HTTP 服务器指南', link: '/HTTP_SERVER_GUIDE' }
-        ]
-      },
-      {
-        text: '场景与示例',
-        items: [
-          { text: '使用实例', link: '/EXAMPLES' },
-          { text: '分支功能', link: '/BRANCH_FEATURE' }
-        ]
-      },
-      {
-        text: '开发与规范',
-        items: [
-          { text: '代码规则', link: '/CODING_RULES' },
-          { text: '项目总结', link: '/SUMMARY' }
-        ]
-      }
-    ],
+    sidebar: {
+      '/guide/': [
+        {
+          text: '指南',
+          items: [
+            { text: '快速开始', link: '/guide/quickstart' },
+            { text: '配置说明', link: '/guide/config' },
+            { text: 'HTTP 模式', link: '/guide/http' }
+          ]
+        }
+      ],
+      '/reference/': [
+        {
+          text: '参考',
+          items: [
+            { text: '工具参考', link: '/reference/tools' }
+          ]
+        }
+      ],
+      '/recipes/': [
+        {
+          text: '场景与示例',
+          items: [
+            { text: '常见场景', link: '/recipes/examples' }
+          ]
+        }
+      ],
+      '/contributing/': [
+        {
+          text: '贡献',
+          items: [
+            { text: '代码规范', link: '/contributing/coding-rules' }
+          ]
+        }
+      ]
+    },
     outline: 'deep',
     socialLinks: [],
     footer: {

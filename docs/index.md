@@ -22,13 +22,9 @@ features:
     details: services 负责请求，utils 负责纯处理，类型定义完备。
 ---
 
-## 主要功能
+## 接下来
 
-- 列出所有项目：`list_projects`
-- 按分支名搜索项目：`list_projects_with_branch`
-- 按项目名搜索项目：`get_project_by_name`
-
-
-更多内容见 使用指南 与 HTTP 服务器指南。
-
+- 快速上手：见「快速开始」
+- HTTP 模式：见「HTTP 模式」
+- 工具列表：见「工具参考」
 
