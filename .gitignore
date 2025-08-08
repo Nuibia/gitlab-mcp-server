@@ -82,6 +82,10 @@ jspm_packages/
 # vuepress build output
 .vuepress/dist
 
+# VitePress build & cache
+docs/.vitepress/cache/
+docs/.vitepress/dist/
+
 # Serverless directories
 .serverless
 
