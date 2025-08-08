@@ -2,14 +2,9 @@ import express from "express";
 import cors from "cors";
 import { McpServer } from "@modelcontextprotocol/sdk/server/mcp.js";
 import { StreamableHTTPServerTransport } from "@modelcontextprotocol/sdk/server/streamableHttp.js";
-import { 
-  checkGitLabToken, 
-  getGitLabProjects, 
-  getProjectsWithBranch,
-  handleGitLabError 
-} from "./services/index.js";
+import { checkGitLabToken } from "./services/index.js";
 import { getServerConfig, getConfig } from "./services/config.js";
-import { generateProjectsListText, generateProjectsWithBranchesListText } from "./utils/index.js";
+import { registerGitLabTools } from "./mcp/register-tools.js";
 
 // 检查GitLab token
 checkGitLabToken();
@@ -24,83 +19,8 @@ const server = new McpServer({
   version: serverConfig.version
 });
 
-// 注册GitLab项目列表工具
-server.registerTool(
-  "list_projects",
-  {
-    title: "GitLab项目列表",
-    description: "获取所有GitLab项目列表",
-    inputSchema: {}
-  },
-  async () => {
-    try {
-      console.log("正在获取GitLab项目列表...");
-      console.log(`📡 目标GitLab: ${config.gitlabUrl}`);
-      
-      const projects = await getGitLabProjects();
-      const projectsText = generateProjectsListText(projects);
-      
-      return {
-        content: [
-          {
-            type: "text",
-            text: projectsText
-          }
-        ]
-      };
-    } catch (error) {
-      const errorMessage = handleGitLabError(error);
-      return {
-        content: [
-          {
-            type: "text",
-            text: errorMessage
-          }
-        ]
-      };
-    }
-  }
-);
-
-// 注册获取包含指定分支名的项目工具
-server.registerTool(
-  "list_projects_with_branch",
-  {
-    title: "获取包含指定分支名的项目",
-    description: "获取所有包含指定分支名的GitLab项目",
-    inputSchema: {}
-  },
-  async () => {
-    try {
-      console.log("正在搜索包含指定分支名的项目...");
-      console.log(`📡 目标GitLab: ${config.gitlabUrl}`);
-      
-      // 这里我们需要从参数中获取分支名，但由于类型问题，我们暂时硬编码
-      const branchName = "main"; // 暂时硬编码，稍后修复
-      const projects = await getProjectsWithBranch(branchName);
-      const projectsText = generateProjectsWithBranchesListText(projects, branchName);
-      
-      return {
-        content: [
-          {
-            type: "text",
-            text: projectsText
-          }
-        ]
-      };
-    } catch (error) {
-      const errorMessage = handleGitLabError(error);
-      return {
-        content: [
-          {
-            type: "text",
-            text: errorMessage
-          }
-        ]
-      };
-    }
-  }
-);
+// 统一注册工具
+registerGitLabTools(server);
 
 // 创建Express应用
 const app = express();
@@ -124,7 +44,6 @@ app.post('/mcp', async (req, res) => {
   }
 
   try {
-    // 使用正确的handleRequest方法
     await transport.handleRequest(req, res);
   } catch (error) {
     console.error('处理MCP请求失败:', error);
@@ -163,14 +82,14 @@ async function main() {
     console.log("🚀 启动GitLab MCP HTTP服务器...");
     console.log(`📡 GitLab URL: ${config.gitlabUrl}`);
     console.log(`🌐 HTTP服务器端口: ${config.port}`);
-    
+
     // 创建HTTP传输
     transport = new StreamableHTTPServerTransport({
       sessionIdGenerator: () => Math.random().toString(36).substring(2, 15),
       enableDnsRebindingProtection: false, // 本地开发禁用
     });
     await server.connect(transport);
-    
+
     // 启动Express服务器
     app.listen(config.port, () => {
       console.log(`✅ HTTP服务器已启动: http://localhost:${config.port}`);

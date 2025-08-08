@@ -1,5 +1,9 @@
 {
     "cSpell.words": [
         "modelcontextprotocol"
-    ]
+    ],
+    "editor.codeActionsOnSave": {
+        "source.fixAll": "explicit",
+        "source.organizeImports": "explicit"
+    }
 }

@@ -1,6 +1,7 @@
 import axios, { AxiosInstance } from "axios";
 import https from "https";
-import { GitLabProject, FormattedProject, GitLabApiResponse, GitLabBranch, ProjectWithBranches } from "../types/index.js";
+import { FormattedProject, GitLabBranch, GitLabProject, ProjectWithBranches } from "../types/index.js";
+import { formatProjects } from "../utils/index.js";
 
 // GitLab API配置
 const GITLAB_URL = process.env.GITLAB_URL || "https://gitlab.com/";
@@ -32,23 +33,6 @@ export function createAxiosInstance(): AxiosInstance {
   return axios.create(config);
 }
 
-// 格式化项目信息
-export function formatProjects(projects: GitLabProject[]): FormattedProject[] {
-  return projects.map(project => ({
-    id: project.id,
-    name: project.name,
-    fullName: project.name_with_namespace,
-    description: project.description || "无描述",
-    url: project.web_url,
-    visibility: project.visibility,
-    defaultBranch: project.default_branch,
-    stars: project.star_count,
-    forks: project.forks_count,
-    createdAt: project.created_at,
-    updatedAt: project.updated_at
-  }));
-}
-
 // 获取GitLab项目列表
 export async function getGitLabProjects(): Promise<FormattedProject[]> {
   const axiosInstance = createAxiosInstance();
@@ -62,6 +46,29 @@ export async function getGitLabProjects(): Promise<FormattedProject[]> {
   });
 
   return formatProjects(response.data);
+}
+
+// 通过项目名查询项目信息（优先精确匹配，其次包含匹配）
+export async function getProjectByName(projectName: string): Promise<FormattedProject | null> {
+  const axiosInstance = createAxiosInstance();
+  const response = await axiosInstance.get<GitLabProject[]>(`${GITLAB_URL}/api/v4/projects`, {
+    params: {
+      search: projectName,
+      simple: true,
+      per_page: 100,
+      order_by: "updated_at",
+      sort: "desc"
+    }
+  });
+
+  const candidates = response.data;
+  if (!candidates || candidates.length === 0) return null;
+
+  // 优先精确匹配 name 或完整命名空间
+  const exact = candidates.find(p => p.name === projectName || p.name_with_namespace === projectName);
+  const selected = exact ?? candidates.find(p => p.name_with_namespace.toLowerCase().includes(projectName.toLowerCase()) || p.name.toLowerCase().includes(projectName.toLowerCase())) ?? candidates[0];
+
+  return formatProjects([selected])[0] ?? null;
 }
 
 // 获取项目的分支列表
@@ -132,7 +139,7 @@ export function handleGitLabError(error: any): string {
     let errorMessage = `❌ 获取GitLab项目失败 (状态码: ${status}): ${message}`;
     
     // 连接失败时的提示
-    if (status === 0 || error.code === 'ECONNREFUSED' || error.code === 'ENOTFOUND') {
+    if (status === 0 || (error as any).code === 'ECONNREFUSED' || (error as any).code === 'ENOTFOUND') {
       errorMessage += '\n\n💡 网络连接提示:\n' +
         '1. 请检查网络连接是否正常\n' +
         '2. 确认GitLab服务器地址正确\n' +

@@ -308,6 +308,8 @@ MIT License
 
 欢迎提交Issue和Pull Request来改进这个项目！
 
+- 请先阅读项目的代码规则：[docs/CODING_RULES.md](docs/CODING_RULES.md)
+
 ## 相关链接
 
 - [Model Context Protocol](https://modelcontextprotocol.io/)

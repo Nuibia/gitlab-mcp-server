@@ -1,14 +1,8 @@
 import { McpServer } from "@modelcontextprotocol/sdk/server/mcp.js";
 import { StdioServerTransport } from "@modelcontextprotocol/sdk/server/stdio.js";
-import { z } from "zod";
-import { 
-  checkGitLabToken, 
-  getGitLabProjects, 
-  getProjectsWithBranch,
-  handleGitLabError 
-} from "./services/index.js";
+import { registerGitLabTools } from "./mcp/register-tools.js";
 import { getServerConfig } from "./services/config.js";
-import { generateProjectsListText, generateProjectsWithBranchesListText } from "./utils/index.js";
+import { checkGitLabToken } from "./services/index.js";
 
 // 检查GitLab token
 checkGitLabToken();
@@ -22,89 +16,17 @@ const server = new McpServer({
   version: serverConfig.version
 });
 
-// 注册GitLab项目列表工具
-server.registerTool(
-  "list_projects",
-  {
-    title: "GitLab项目列表",
-    description: "获取所有GitLab项目列表",
-    inputSchema: {}
-  },
-  async () => {
-    try {
-      console.log("正在获取GitLab项目列表...");
-      
-      const projects = await getGitLabProjects();
-      const projectsText = generateProjectsListText(projects);
-      
-      return {
-        content: [
-          {
-            type: "text",
-            text: projectsText
-          }
-        ]
-      };
-    } catch (error) {
-      const errorMessage = handleGitLabError(error);
-      return {
-        content: [
-          {
-            type: "text",
-            text: errorMessage
-          }
-        ]
-      };
-    }
-  }
-);
-
-// 注册获取包含指定分支名的项目工具
-server.registerTool(
-  "list_projects_with_branch",
-  {
-    title: "获取包含指定分支名的项目",
-    description: "获取所有包含指定分支名的GitLab项目",
-    inputSchema: {
-     branchName: z.string().default("feature/add-voice")
-    }
-  },
-  async ({branchName}) => {
-    try {
-      console.log("正在搜索包含指定分支名的项目...");
-      const projects = await getProjectsWithBranch(branchName);
-      const projectsText = generateProjectsWithBranchesListText(projects, branchName);
-      
-      return {
-        content: [
-          {
-            type: "text",
-            text: projectsText
-          }
-        ]
-      };
-    } catch (error) {
-      const errorMessage = handleGitLabError(error);
-      return {
-        content: [
-          {
-            type: "text",
-            text: errorMessage
-          }
-        ]
-      };
-    }
-  }
-);
+// 统一注册工具
+registerGitLabTools(server);
 
 // 启动服务器
 async function main() {
   try {
     console.log("🚀 启动GitLab MCP服务器...");
-    
+
     const transport = new StdioServerTransport();
     await server.connect(transport);
-    
+
     console.log("✅ GitLab MCP服务器已启动，等待连接...");
   } catch (error) {
     console.error("❌ 启动服务器失败:", error);

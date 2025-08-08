@@ -1,0 +1,59 @@
+---
+description:
+globs:
+alwaysApply: false
+---
+
+Rule Name: code-better
+Description: 统一分层职责、MCP 工具注册与类型校验，降低耦合、提升可维护性与一致性。
+Tags: architecture, layering, mcp, typescript, zod
+
+Scope:
+- Applies to: src/**
+- Excludes: dist/**, node_modules/**
+
+Expectations:
+1) 分层职责（docs/CODING_RULES.md）
+- services 只能放“请求相关处理”和含副作用逻辑：HTTP/GitLab API 封装、鉴权校验、网络重试、I/O 等
+- utils 只能放“纯数据处理”：数据格式化、转换、计算等，不进行 I/O，不依赖环境变量或外部状态
+- 依赖方向：services 可以 import utils；utils 不得 import services
+
+2) MCP 工具注册（单一来源）
+- 所有 MCP 工具注册必须集中在 `src/mcp/register-tools.ts`
+- `src/index.ts` 与 `src/http-server.ts` 仅负责创建传输层（stdio/http）与调用 `registerGitLabTools(server)`，不得重复定义工具
+
+3) 类型与校验
+- 优先使用 SDK 官方类型，例如从 `@modelcontextprotocol/sdk/types.js` 导入的 `Implementation`
+- 工具 `inputSchema` 必须使用 ZodRawShape（例如 `{ field: z.string() }`），不要直接传 `z.object(...)`
+- 统一使用 `services/gitlab.ts` 中的 `handleGitLabError` 做错误消息生成
+
+4) Axios/请求
+- 所有网络请求必须通过 `services/gitlab.ts` 的 `createAxiosInstance()` 创建的实例发起
+- 严禁在 utils 与入口文件中直接发起网络请求
+
+5) 纯函数约束（utils）
+- 不得访问进程环境变量、文件系统、网络、全局可变状态
+- 允许：纯计算、字符串/日期格式化、文本生成（如 `generateProjectsListText`）
+
+6) 结构与可读性
+- 新功能优先放到 services（数据获取）+ utils（数据加工）+ mcp/register-tools（对外暴露）三段式
+- 工具新增时：先在 services 补齐数据源，再在 utils 编排输出，最后在 register-tools 注册
+
+7) 质量门槛
+- 变更后必须通过 TypeScript 编译（`tsc --noEmit`）
+- 不引入循环依赖；若出现 utils -> services 依赖，必须调整
+
+Auto-fixes & Suggestions:
+- 若在 utils 中发现 axios/http/env/process 等引用，建议移动到 services
+- 若在 `src/index.ts` 或 `src/http-server.ts` 中发现 `server.registerTool(...)`，建议迁移到 `src/mcp/register-tools.ts`
+- 若工具 `inputSchema` 直接使用 `z.object(...)`，建议改为传递原始 shape：`{ foo: z.string() }`
+
+Examples (Good):
+- services/gitlab.ts: `getGitLabProjects()`, `getProjectByName()`, `getProjectBranches()`
+- utils/format.ts: `formatDate()`, `generateProjectsListText()`, `generateProjectsWithBranchesListText()`
+- mcp/register-tools.ts: `registerGitLabTools(server)` 统一注册 `list_projects`/`list_projects_with_branch`/`get_project_by_name`
+
+Examples (Avoid):
+- 在 utils 中直接 `axios.get(...)`
+- 在 `src/index.ts`/`src/http-server.ts` 手写工具注册逻辑
+- 自行重复定义 SDK 已提供的类型
