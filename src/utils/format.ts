@@ -1,5 +1,5 @@
 // 格式化相关的工具函数
-import { GitLabBranch, ProjectWithBranches } from "../types/index.js";
+import { GitLabBranch, GitLabProject, ProjectWithBranches } from "../types/index.js";
 
 // 格式化日期
 export function formatDate(dateString: string): string {
@@ -20,28 +20,27 @@ export function formatBranchDisplayText(branch: GitLabBranch): string {
 }
 
 // 格式化项目显示文本
-export function formatProjectDisplayText(project: any): string {
-  return `📁 **${project.fullName}**\n` +
-    `   - 描述: ${project.description}\n` +
+export function formatProjectDisplayText(project: GitLabProject): string {
+  return `📁 **${project.name_with_namespace}**\n` +
+    `   - 描述: ${project.description ?? '无描述'}\n` +
     `   - 可见性: ${project.visibility}\n` +
-    `   - 默认分支: ${project.defaultBranch}\n` +
-    `   - 星标: ${project.stars} | 分支: ${project.forks}\n` +
-    `   - 链接: ${project.url}\n` +
-    `   - 最后更新: ${formatDate(project.updatedAt)}\n`;
+    `   - 默认分支: ${project.default_branch}\n` +
+    `   - 星标: ${project.star_count} | 分叉: ${project.forks_count}\n` +
+    `   - 链接: ${project.web_url}\n` +
+    `   - 最后更新: ${formatDate(project.updated_at)}\n`;
 }
 
 // 格式化包含分支的项目显示文本
 export function formatProjectWithBranchesDisplayText(project: ProjectWithBranches): string {
-  let text = `📁 **${project.fullName}**\n` +
-    `   - 描述: ${project.description}\n` +
+  let text = `📁 **${project.name_with_namespace}**\n` +
+    `   - 描述: ${project.description ?? '无描述'}\n` +
     `   - 可见性: ${project.visibility}\n` +
-    `   - 默认分支: ${project.defaultBranch}\n` +
-    `   - 星标: ${project.stars} | 分支: ${project.forks}\n` +
-    `   - 链接: ${project.url}\n` +
-    `   - 最后更新: ${formatDate(project.updatedAt)}\n` +
+    `   - 默认分支: ${project.default_branch}\n` +
+    `   - 星标: ${project.star_count} | 分叉: ${project.forks_count}\n` +
+    `   - 链接: ${project.web_url}\n` +
+    `   - 最后更新: ${formatDate(project.updated_at)}\n` +
     `   - 匹配分支 (${project.branches.length} 个):\n`;
   
-  // 添加分支信息
   project.branches.forEach(branch => {
     text += formatBranchDisplayText(branch) + '\n';
   });
@@ -50,7 +49,7 @@ export function formatProjectWithBranchesDisplayText(project: ProjectWithBranche
 }
 
 // 生成项目列表文本
-export function generateProjectsListText(projects: any[]): string {
+export function generateProjectsListText(projects: GitLabProject[]): string {
   return `✅ 成功获取到 ${projects.length} 个项目:\n\n${projects.map(project => 
     formatProjectDisplayText(project)
   ).join('\n')}`;

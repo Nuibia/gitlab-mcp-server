@@ -1,7 +1,6 @@
 import axios, { AxiosInstance } from "axios";
 import https from "https";
-import { FormattedProject, GitLabBranch, GitLabProject, ProjectWithBranches } from "../types/index.js";
-import { formatProjects } from "../utils/index.js";
+import { GitLabBranch, GitLabProject, ProjectWithBranches } from "../types/index.js";
 
 // GitLab API配置
 const GITLAB_URL = process.env.GITLAB_URL || "https://gitlab.com/";
@@ -34,9 +33,9 @@ export function createAxiosInstance(): AxiosInstance {
 }
 
 // 获取GitLab项目列表
-export async function getGitLabProjects(): Promise<FormattedProject[]> {
+export async function getGitLabProjects(): Promise<GitLabProject[]> {
   const axiosInstance = createAxiosInstance();
-  
+
   const response = await axiosInstance.get<GitLabProject[]>(`${GITLAB_URL}/api/v4/projects`, {
     params: {
       per_page: 100, // 每页100个项目
@@ -44,12 +43,11 @@ export async function getGitLabProjects(): Promise<FormattedProject[]> {
       sort: "desc"
     }
   });
-
-  return formatProjects(response.data);
+  return response.data;
 }
 
-// 通过项目名查询项目信息（优先精确匹配，其次包含匹配）
-export async function getProjectByName(projectName: string): Promise<FormattedProject | null> {
+// 通过项目名查询项目信息
+export async function getProjectByName(projectName: string): Promise<GitLabProject | null> {
   const axiosInstance = createAxiosInstance();
   const response = await axiosInstance.get<GitLabProject[]>(`${GITLAB_URL}/api/v4/projects`, {
     params: {
@@ -68,20 +66,20 @@ export async function getProjectByName(projectName: string): Promise<FormattedPr
   const exact = candidates.find(p => p.name === projectName || p.name_with_namespace === projectName);
   const selected = exact ?? candidates.find(p => p.name_with_namespace.toLowerCase().includes(projectName.toLowerCase()) || p.name.toLowerCase().includes(projectName.toLowerCase())) ?? candidates[0];
 
-  return formatProjects([selected])[0] ?? null;
+  return selected ?? null;
 }
 
 // 获取项目的分支列表
 export async function getProjectBranches(projectId: number): Promise<GitLabBranch[]> {
   const axiosInstance = createAxiosInstance();
-  
+
   try {
     const response = await axiosInstance.get<GitLabBranch[]>(`${GITLAB_URL}/api/v4/projects/${projectId}/repository/branches`, {
       params: {
         per_page: 100 // 每页100个分支
       }
     });
-    
+
     return response.data;
   } catch (error) {
     console.warn(`⚠️ 获取项目 ${projectId} 的分支失败:`, error);
@@ -92,14 +90,14 @@ export async function getProjectBranches(projectId: number): Promise<GitLabBranc
 // 获取包含指定分支名的所有项目
 export async function getProjectsWithBranch(branchName: string): Promise<ProjectWithBranches[]> {
   const axiosInstance = createAxiosInstance();
-  
+
   try {
     // 首先获取所有项目
     const projects = await getGitLabProjects();
     const projectsWithBranches: ProjectWithBranches[] = [];
-    
+
     console.log(`🔍 正在搜索包含分支 "${branchName}" 的项目...`);
-    
+ 
     // 遍历每个项目，检查是否包含指定分支
     for (const project of projects) {
       try {
@@ -121,7 +119,7 @@ export async function getProjectsWithBranch(branchName: string): Promise<Project
         continue;
       }
     }
-    
+
     return projectsWithBranches;
   } catch (error) {
     throw error;
@@ -131,14 +129,14 @@ export async function getProjectsWithBranch(branchName: string): Promise<Project
 // 处理GitLab API错误
 export function handleGitLabError(error: any): string {
   console.error("获取GitLab项目失败:", error);
-  
+
   if (axios.isAxiosError(error)) {
     const status = error.response?.status;
     const message = error.response?.data?.message || error.message;
-    
+
     let errorMessage = `❌ 获取GitLab项目失败 (状态码: ${status}): ${message}`;
-    
-    // 连接失败时的提示
+
+     // 连接失败时的提示
     if (status === 0 || (error as any).code === 'ECONNREFUSED' || (error as any).code === 'ENOTFOUND') {
       errorMessage += '\n\n💡 网络连接提示:\n' +
         '1. 请检查网络连接是否正常\n' +
@@ -160,9 +158,9 @@ export function handleGitLabError(error: any): string {
         '2. 检查用户是否有访问项目的权限\n' +
         '3. 联系GitLab管理员确认权限设置';
     }
-    
+
     return errorMessage;
   }
-  
+
   return `❌ 获取GitLab项目失败: ${error instanceof Error ? error.message : '未知错误'}`;
 } 
