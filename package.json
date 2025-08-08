@@ -25,7 +25,7 @@
     "typescript",
     "model-context-protocol"
   ],
-  "author": "Your Name",
+  "author": "Nuibia",
   "license": "MIT",
   "dependencies": {
     "@modelcontextprotocol/sdk": "^1.17.1",
