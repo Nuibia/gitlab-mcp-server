@@ -13,16 +13,15 @@
 
 ## 基础使用实例
 
-### 实例1: 标准GitLab访问
+### 实例1: 标准 GitLab 访问
 
 **场景**: 访问标准的GitLab实例
 
-**配置**:
-```env
-# .env 文件
-GITLAB_URL=https://gitlab.com/
-GITLAB_TOKEN=glpat-xxxxxxxxxxxxxxxxxxxx
-PORT=3000
+**环境变量**:
+```bash
+export GITLAB_URL=https://gitlab.com/
+export GITLAB_TOKEN=glpat-xxxxxxxxxxxxxxxxxxxx
+export PORT=3000
 ```
 
 **使用步骤**:
@@ -72,17 +71,15 @@ curl http://localhost:3000/health
 
 ## 网络访问实例
 
-### 实例2: 企业内网GitLab访问
+### 实例2: 企业内网 GitLab 访问
 
 **场景**: 访问企业内网的GitLab实例
 
-**配置**:
-```env
-# .env 文件
-GITLAB_URL=https://gitlab.internal.company.com/
-GITLAB_TOKEN=glpat-xxxxxxxxxxxxxxxxxxxx
-PORT=3000
-VERIFY_SSL=false
+**环境变量**:
+```bash
+export GITLAB_URL=https://gitlab.internal.company.com/
+export GITLAB_TOKEN=glpat-xxxxxxxxxxxxxxxxxxxx
+export PORT=3000
 ```
 
 **使用步骤**:
@@ -105,7 +102,7 @@ curl http://localhost:3000/health
 }
 ```
 
-**MCP客户端配置**:
+**MCP 客户端配置**:
 ```json
 {
   "mcpServers": {
@@ -121,17 +118,15 @@ curl http://localhost:3000/health
 }
 ```
 
-### 实例3: 自签名证书GitLab访问
+### 实例3: 自签名证书 GitLab 访问
 
 **场景**: 访问使用自签名证书的GitLab实例
 
-**配置**:
-```env
-# .env 文件
-GITLAB_URL=https://gitlab.internal.company.com/
-GITLAB_TOKEN=glpat-xxxxxxxxxxxxxxxxxxxx
-VERIFY_SSL=false
-PORT=3000
+**环境变量**:
+```bash
+export GITLAB_URL=https://gitlab.internal.company.com/
+export GITLAB_TOKEN=glpat-xxxxxxxxxxxxxxxxxxxx
+export PORT=3000
 ```
 
 **使用步骤**:
@@ -149,15 +144,13 @@ yarn http:dev
 
 **场景**: 需要通过企业代理服务器访问GitLab
 
-**配置**:
-```env
-# .env 文件
-GITLAB_URL=https://gitlab.internal.company.com/
-GITLAB_TOKEN=glpat-xxxxxxxxxxxxxxxxxxxx
-HTTP_PROXY=http://proxy.company.com:8080
-HTTPS_PROXY=http://proxy.company.com:8080
-VERIFY_SSL=false
-PORT=3000
+**环境变量**:
+```bash
+export GITLAB_URL=https://gitlab.internal.company.com/
+export GITLAB_TOKEN=glpat-xxxxxxxxxxxxxxxxxxxx
+export HTTP_PROXY=http://proxy.company.com:8080
+export HTTPS_PROXY=http://proxy.company.com:8080
+export PORT=3000
 ```
 
 **使用步骤**:
@@ -171,23 +164,21 @@ yarn http:dev
 
 **测试连接**:
 ```bash
-# 测试代理连接
-curl -x http://proxy.company.com:8080 \
-  -k https://gitlab.internal.company.com/api/v4/version
+# 测试代理连接（示例）
+curl -x http://proxy.company.com:8080 https://gitlab.internal.company.com/api/v4/version
 ```
 
 ## HTTP服务器实例
 
-### 实例5: HTTP服务器模式完整配置
+### 实例5: HTTP 服务器模式完整配置
 
 **场景**: 使用HTTP服务器模式，支持多种MCP客户端
 
-**配置**:
-```env
-# .env 文件
-GITLAB_URL=https://gitlab.com/
-GITLAB_TOKEN=glpat-xxxxxxxxxxxxxxxxxxxx
-PORT=3000
+**环境变量**:
+```bash
+export GITLAB_URL=https://gitlab.com/
+export GITLAB_TOKEN=glpat-xxxxxxxxxxxxxxxxxxxx
+export PORT=3000
 ```
 
 **启动服务器**:
@@ -297,8 +288,8 @@ GITLAB_TOKEN=glpat-new-token-here
 💡 内网访问提示:
 1. 检查网络连接是否正常
 2. 确认GitLab URL是否正确
-3. 如需代理，请设置HTTP_PROXY或HTTPS_PROXY环境变量
-4. 如果是自签名证书，请设置VERIFY_SSL=false
+3. 如需代理，请设置 HTTP_PROXY 或 HTTPS_PROXY 环境变量
+4. 本项目已默认忽略 SSL 校验，无需额外配置
 ```
 
 **解决方案**:
@@ -323,26 +314,19 @@ export VERIFY_SSL=false
 
 **场景**: 添加获取项目详情的功能
 
-**步骤1: 在 `src/utils.ts` 中添加新函数**:
+**步骤1: 在 `src/services/gitlab.ts` 中添加新函数**:
 ```typescript
-// 获取项目详情
+// 获取项目详情（位于 services/gitlab.ts）
 export async function getProjectDetails(projectId: number) {
   const axiosInstance = createAxiosInstance();
   const response = await axiosInstance.get(`${GITLAB_URL}/api/v4/projects/${projectId}`);
   return response.data;
 }
-
-// 获取项目分支
-export async function getProjectBranches(projectId: number) {
-  const axiosInstance = createAxiosInstance();
-  const response = await axiosInstance.get(`${GITLAB_URL}/api/v4/projects/${projectId}/repository/branches`);
-  return response.data;
-}
 ```
 
-**步骤2: 在 `src/index.ts` 中注册新工具**:
+**步骤2: 在 `src/mcp/register-tools.ts` 中注册新工具**:
 ```typescript
-// 注册获取项目详情工具
+// 注册获取项目详情工具（位于 mcp/register-tools.ts）
 server.registerTool(
   "get_project_details",
   {
@@ -540,14 +524,12 @@ node test-complete.js
 
 **解决方案**:
 ```bash
-# 1. 检查.env文件是否存在
-ls -la .env
+# 1. 检查环境变量是否存在
+echo $GITLAB_TOKEN
 
-# 2. 检查.env文件内容
-cat .env
+# 2. 确认令牌具备 read_api 权限
 
-# 3. 确保.env文件格式正确
-echo "GITLAB_TOKEN=glpat-xxxxxxxxxxxxxxxxxxxx" >> .env
+# 3. 如使用 shell 启动脚本，确保已 export 对应变量
 
 # 4. 重新启动服务器
 yarn http:dev

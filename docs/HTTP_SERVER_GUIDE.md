@@ -1,12 +1,12 @@
-# GitLab MCP HTTP服务器使用指南
+# GitLab MCP HTTP 服务器使用指南
 
 ## 概述
 
-这个HTTP服务器版本解决了内网GitLab访问的问题。通过在本地启动HTTP服务器，MCP客户端可以通过HTTP方式访问，避免了Node.js直接访问内网GitLab的网络问题。
+HTTP 服务器适用于需要通过 HTTP 传输与 MCP 交互的场景，也更友好地适配内网 GitLab、VPN、自签名证书等环境。
 
 ## 优势
 
-1. **解决内网访问问题**: 本地HTTP服务器可以正常访问内网GitLab
+1. **内网友好**: 更容易访问内网 GitLab
 2. **简化配置**: 无需复杂的代理设置
 3. **更好的调试**: 可以通过浏览器访问健康检查端点
 4. **支持多种客户端**: 任何支持HTTP传输的MCP客户端都可以使用
@@ -28,10 +28,10 @@ yarn http
 
 ## 服务器端点
 
-### 1. MCP端点
-- **URL**: `http://localhost:3000/mcp`
-- **方法**: POST, GET, DELETE
-- **用途**: MCP协议通信
+### 1. MCP 端点
+- URL: `http://localhost:3000/mcp`
+- 方法: POST（主要）
+- 用途: MCP 协议通信（JSON-RPC）
 
 ### 2. 健康检查
 - **URL**: `http://localhost:3000/health`
@@ -40,16 +40,16 @@ yarn http
 
 ## 客户端配置
 
-### Claude Desktop配置
+### Claude Desktop 配置
 
-在Claude Desktop的配置文件中添加：
+推荐使用 HTTP 传输方式：
 
 ```json
 {
   "mcpServers": {
     "gitlab": {
-      "command": "curl",
-      "args": ["-X", "POST", "http://localhost:3000/mcp"],
+      "transport": "http",
+      "url": "http://localhost:3000/mcp",
       "env": {
         "GITLAB_URL": "https://your-internal-gitlab.com/",
         "GITLAB_TOKEN": "your_token_here"
@@ -59,7 +59,7 @@ yarn http
 }
 ```
 
-### 其他MCP客户端
+### 其他 MCP 客户端
 
 对于支持HTTP传输的MCP客户端，配置：
 
@@ -80,20 +80,17 @@ yarn http
 
 ## 环境变量配置
 
-在 `.env` 文件中设置：
+可以通过环境变量控制运行参数：
 
-```env
-# GitLab配置
-GITLAB_URL=https://your-internal-gitlab.company.com/
-GITLAB_TOKEN=your_gitlab_token
-
-# 服务器配置
-PORT=3000
+```bash
+export GITLAB_URL=https://your-internal-gitlab.company.com/
+export GITLAB_TOKEN=your_gitlab_token
+export PORT=3000
 ```
 
 ## 测试连接
 
-### 1. 检查服务器状态
+### 1) 检查服务器状态
 ```bash
 curl http://localhost:3000/health
 ```
@@ -108,7 +105,7 @@ curl http://localhost:3000/health
 }
 ```
 
-### 2. 测试MCP连接
+### 2) 测试 MCP 连接
 ```bash
 curl -X POST http://localhost:3000/mcp \
   -H "Content-Type: application/json" \
@@ -135,14 +132,14 @@ curl -X POST http://localhost:3000/mcp \
 2. 确认环境变量配置正确
 3. 检查依赖是否安装完整
 
-### 问题2: 无法访问内网GitLab
+### 问题2: 无法访问内网 GitLab
 **解决方案**:
 1. 确认GitLab URL正确
 2. 检查网络连接
 3. 配置代理（如需要）
 4. 禁用SSL验证（如需要）
 
-### 问题3: MCP客户端连接失败
+### 问题3: MCP 客户端连接失败
 **解决方案**:
 1. 确认服务器正在运行
 2. 检查客户端配置
@@ -170,18 +167,18 @@ curl -k https://your-gitlab-url/api/v4/version
 
 ## 性能优化
 
-### 1. 超时设置
+### 1) 超时设置
 服务器已配置30秒超时，适合内网环境。
 
-### 2. 连接池
+### 2) 连接池
 对于高并发场景，可以考虑添加连接池配置。
 
-### 3. 缓存
+### 3) 缓存
 可以添加Redis缓存来提升性能。
 
 ## 安全考虑
 
-### 1. CORS配置
+### 1) CORS 配置
 当前配置允许所有来源，生产环境应该限制：
 
 ```javascript
@@ -191,7 +188,7 @@ app.use(cors({
 }));
 ```
 
-### 2. 认证
+### 2) 认证
 可以添加API密钥认证：
 
 ```javascript
@@ -206,25 +203,25 @@ app.use('/mcp', (req, res, next) => {
 
 ## 部署建议
 
-### 1. 使用PM2
+### 1) 使用 PM2
 ```bash
-npm install -g pm2
+yarn global add pm2
 pm2 start dist/http-server.js --name gitlab-mcp-server
 ```
 
-### 2. 使用Docker
+### 2) 使用 Docker
 ```dockerfile
 FROM node:18-alpine
 WORKDIR /app
 COPY package*.json ./
-RUN npm install
+RUN yarn install --frozen-lockfile
 COPY . .
-RUN npm run build
+RUN yarn build
 EXPOSE 3000
-CMD ["npm", "run", "http"]
+CMD ["yarn", "http"]
 ```
 
-### 3. 使用Nginx反向代理
+### 3) 使用 Nginx 反向代理
 ```nginx
 server {
     listen 80;
