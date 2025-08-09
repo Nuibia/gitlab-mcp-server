@@ -16,6 +16,9 @@ export function checkGitLabToken(): void {
 }
 
 // 创建axios实例
+/**
+ * 创建 axios 实例（默认忽略 SSL 校验，便于内网/自签名环境）。
+ */
 export function createAxiosInstance(): AxiosInstance {
   const config = {
     timeout: 30000, // 30秒超时
@@ -33,6 +36,9 @@ export function createAxiosInstance(): AxiosInstance {
 }
 
 // 获取GitLab项目列表
+/**
+ * 拉取项目列表，默认每页 100 个，按更新时间倒序。
+ */
 export async function getGitLabProjects(): Promise<GitLabProject[]> {
   const axiosInstance = createAxiosInstance();
 
@@ -47,6 +53,9 @@ export async function getGitLabProjects(): Promise<GitLabProject[]> {
 }
 
 // 通过项目名查询项目信息
+/**
+ * 通过项目名或完整命名空间搜索项目，优先返回精确匹配；否则返回第一个近似匹配或空。
+ */
 export async function getProjectByName(projectName: string): Promise<GitLabProject | null> {
   const axiosInstance = createAxiosInstance();
   const response = await axiosInstance.get<GitLabProject[]>(`${GITLAB_URL}/api/v4/projects`, {
@@ -70,6 +79,9 @@ export async function getProjectByName(projectName: string): Promise<GitLabProje
 }
 
 // 获取项目的分支列表
+/**
+ * 拉取指定项目的分支列表。
+ */
 export async function getProjectBranches(projectId: number): Promise<GitLabBranch[]> {
   const axiosInstance = createAxiosInstance();
 
@@ -88,36 +100,41 @@ export async function getProjectBranches(projectId: number): Promise<GitLabBranc
 }
 
 // 获取包含指定分支名的所有项目
+/**
+ * 搜索包含给定分支名（模糊匹配）的所有项目，支持并发限制以规避 API 限流。
+ */
 export async function getProjectsWithBranch(branchName: string): Promise<ProjectWithBranches[]> {
-  const axiosInstance = createAxiosInstance();
-
   try {
     // 首先获取所有项目
     const projects = await getGitLabProjects();
     const projectsWithBranches: ProjectWithBranches[] = [];
 
     console.log(`🔍 正在搜索包含分支 "${branchName}" 的项目...`);
- 
-    // 遍历每个项目，检查是否包含指定分支
-    for (const project of projects) {
-      try {
-        const branches = await getProjectBranches(project.id);
-        
-        // 检查是否包含指定分支名
-        const matchingBranches = branches.filter(branch => 
-          branch.name.toLowerCase().includes(branchName.toLowerCase())
-        );
-        
-        if (matchingBranches.length > 0) {
-          projectsWithBranches.push({
-            ...project,
-            branches: matchingBranches
-          });
-        }
-      } catch (error) {
-        console.warn(`⚠️ 获取项目 ${project.name} 的分支失败:`, error);
-        continue;
-      }
+    
+    // 并发限制（可通过环境变量覆盖），默认同时处理 8 个项目
+    const concurrencyLimit = Math.max(1, parseInt(process.env.GITLAB_FETCH_CONCURRENCY || "8", 10));
+
+    // 分批并发执行，避免同时请求过多导致 API 限流
+    for (let i = 0; i < projects.length; i += concurrencyLimit) {
+      const batch = projects.slice(i, i + concurrencyLimit);
+      await Promise.all(
+        batch.map(async (project) => {
+          try {
+            const branches = await getProjectBranches(project.id);
+            const matchingBranches = branches.filter((branch) =>
+              branch.name.toLowerCase().includes(branchName.toLowerCase())
+            );
+            if (matchingBranches.length > 0) {
+              projectsWithBranches.push({
+                ...project,
+                branches: matchingBranches,
+              });
+            }
+          } catch (error) {
+            console.warn(`⚠️ 获取项目 ${project.name} 的分支失败:`, error);
+          }
+        })
+      );
     }
 
     return projectsWithBranches;

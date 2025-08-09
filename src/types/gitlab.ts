@@ -14,7 +14,7 @@ export interface GitLabProject {
   created_at: string;
   /** 最后更新时间 ISO 字符串 */
   updated_at: string;
-  /** 默认分支名 */
+  /** 可见性（private/internal/public） */
   visibility: string;
   /** 默认分支名 */
   default_branch: string;

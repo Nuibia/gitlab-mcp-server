@@ -17,12 +17,17 @@
 gitlab-mcp-server/
 ├── README.md
 ├── docs/
-│   ├── USAGE.md
-│   ├── EXAMPLES.md
-│   ├── HTTP_SERVER_GUIDE.md
-│   ├── BRANCH_FEATURE.md
-│   ├── CODING_RULES.md
-│   └── SUMMARY.md
+│   ├── index.md                # 文档首页（VitePress）
+│   ├── USAGE.md                # 使用方式（Cursor 配置示例）
+│   ├── guide/
+│   │   ├── quickstart.md       # 快速开始
+│   │   └── http.md             # HTTP 模式指南
+│   ├── reference/
+│   │   └── tools.md            # 工具参考
+│   ├── recipes/
+│   │   └── examples.md         # 常见场景
+│   └── contributing/
+│       └── coding-rules.md     # 代码规范
 ├── src/
 │   ├── index.ts                # Stdio 服务器入口
 │   ├── http-server.ts          # HTTP 服务器入口
@@ -92,7 +97,7 @@ yarn http:dev
 yarn build && yarn http
 ```
 
-HTTP 服务器主要端点：
+HTTP 服务器主要端点（详见 `docs/guide/http.md`）：
 
 - GET `/health`: 健康检查
 - POST `/mcp`: MCP 协议通信（JSON-RPC）
@@ -130,7 +135,7 @@ curl -X POST http://localhost:3000/mcp \
 
 - `services/` 放请求与含副作用逻辑
 - `utils/` 放纯函数与数据处理
-- 详见 `docs/CODING_RULES.md`
+- 详见 `docs/contributing/coding-rules.md`
 
 ## 许可证与贡献
 

@@ -2,11 +2,17 @@
 import { GitLabBranch, GitLabProject, ProjectWithBranches } from "../types/index.js";
 
 // 格式化日期
+/**
+ * 将 ISO 日期字符串格式化为 zh-CN 本地时间字符串。
+ */
 export function formatDate(dateString: string): string {
   return new Date(dateString).toLocaleString('zh-CN');
 }
 
 // 格式化分支信息
+/**
+ * 生成单个分支的人类可读文本。
+ */
 export function formatBranchDisplayText(branch: GitLabBranch): string {
   const status = branch.default ? "🌿 默认分支" : 
                  branch.protected ? "🛡️ 受保护分支" : 
@@ -20,6 +26,9 @@ export function formatBranchDisplayText(branch: GitLabBranch): string {
 }
 
 // 格式化项目显示文本
+/**
+ * 生成单个项目的人类可读文本。
+ */
 export function formatProjectDisplayText(project: GitLabProject): string {
   return `📁 **${project.name_with_namespace}**\n` +
     `   - 描述: ${project.description ?? '无描述'}\n` +
@@ -31,6 +40,9 @@ export function formatProjectDisplayText(project: GitLabProject): string {
 }
 
 // 格式化包含分支的项目显示文本
+/**
+ * 生成包含匹配分支的项目文本。
+ */
 export function formatProjectWithBranchesDisplayText(project: ProjectWithBranches): string {
   let text = `📁 **${project.name_with_namespace}**\n` +
     `   - 描述: ${project.description ?? '无描述'}\n` +
@@ -49,6 +61,9 @@ export function formatProjectWithBranchesDisplayText(project: ProjectWithBranche
 }
 
 // 生成项目列表文本
+/**
+ * 汇总项目列表文本。
+ */
 export function generateProjectsListText(projects: GitLabProject[]): string {
   return `✅ 成功获取到 ${projects.length} 个项目:\n\n${projects.map(project => 
     formatProjectDisplayText(project)
@@ -56,6 +71,9 @@ export function generateProjectsListText(projects: GitLabProject[]): string {
 }
 
 // 生成包含分支的项目列表文本
+/**
+ * 汇总包含指定分支名的项目列表文本。
+ */
 export function generateProjectsWithBranchesListText(projects: ProjectWithBranches[], branchName: string): string {
   if (projects.length === 0) {
     return `🔍 未找到包含分支名 "${branchName}" 的项目。`;

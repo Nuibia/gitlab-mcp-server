@@ -9,10 +9,10 @@ hero:
   actions:
     - theme: brand
       text: 快速开始
-      link: /USAGE
+      link: /guide/quickstart
     - theme: alt
-      text: HTTP 模式
-      link: /HTTP_SERVER_GUIDE
+      text: 使用方式
+      link: /USAGE
 features:
   - title: 一键上手
     details: 使用 yarn 与 nvm 即可快速启动，提供 Stdio / HTTP 双入口。

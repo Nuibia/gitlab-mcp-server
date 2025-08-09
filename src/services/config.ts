@@ -1,5 +1,12 @@
-import { Config } from "../types/index.js";
 import { Implementation } from "@modelcontextprotocol/sdk/types.js";
+import { Config } from "../types/index.js";
+
+/**
+ * 读取运行时配置（来源于环境变量）。
+ * - GITLAB_URL: GitLab 实例地址，默认 https://gitlab.com/
+ * - GITLAB_TOKEN: 访问令牌（必填）
+ * - PORT: HTTP 端口（仅 http-server 使用），默认 3000
+ */
 
 // 获取环境配置
 export function getConfig(): Config {

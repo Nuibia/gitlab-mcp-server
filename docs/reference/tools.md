@@ -22,6 +22,12 @@ curl -X POST http://localhost:3000/mcp \
 - 入参：`{ branchName: string }`（默认 `master`）
 - 返回：格式化文本
 
+ 环境变量优化：
+
+ - `GITLAB_FETCH_CONCURRENCY`（可选，默认 `8`）：
+   - 说明：控制并发抓取分支的并发度，避免 GitLab API 限流。
+   - 建议：内网或限流严格的环境下可降低该值（如 2-4）。
+
 ### get_project_by_name
 - 描述：按项目名或完整命名空间搜索
 - 入参：`{ projectName: string }`
