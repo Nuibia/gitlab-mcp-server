@@ -97,11 +97,6 @@ yarn http:dev
 yarn build && yarn http
 ```
 
-HTTP 服务器主要端点（详见 `docs/guide/http.md`）：
-
-- GET `/health`: 健康检查
-- POST `/mcp`: MCP 协议通信（JSON-RPC）
-
 ## 已注册工具
 
 - `list_projects`: 获取GitLab项目列表
@@ -110,18 +105,14 @@ HTTP 服务器主要端点（详见 `docs/guide/http.md`）：
 - `get_project_by_name`: 按项目名搜索项目
   - 参数：`{ projectName: string }`
 
-示例（HTTP 模式 + curl）：
+## 使用方式
 
-```bash
-curl -X POST http://localhost:3000/mcp \
-  -H "Content-Type: application/json" \
-  -d '{
-    "jsonrpc": "2.0",
-    "id": 1,
-    "method": "tools/call",
-    "params": { "name": "list_projects", "arguments": {} }
-  }'
-```
+本项目支持两种 MCP 使用方式：
+
+- **Stdio模式**：适合本地开发，直接与Cursor集成，无需手动启动服务器
+- **HTTP模式**：适合内网环境、自签名证书环境，或需要跨进程通信的场景
+
+详见：[使用方式（Cursor配置）](/USAGE)
 
 ## 故障排除
 

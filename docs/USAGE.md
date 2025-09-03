@@ -1,4 +1,8 @@
-## 使用方式（以 Cursor 为例）
+# 👥 使用者指南 - 完整使用方式
+
+> **📖 面向对象**：只需要使用GitLab MCP服务器的用户
+>
+> 本指南将帮助您完整配置和使用GitLab MCP服务器，包括Stdio和HTTP两种传输方式。
 
 本项目支持两种 MCP 使用方式：
 
@@ -80,22 +84,27 @@ yarn build
 
 ### 方式二：HTTP（适合跨语言/跨进程或内网部署）
 
-先在本机或服务器启动 HTTP 端：
+HTTP 模式适合内网环境、自签名证书环境，或需要跨进程通信的场景。
+
+#### 1. 启动HTTP服务器
+
+先启动GitLab MCP HTTP服务器：
 
 ```bash
-# 开发
+# 开发环境
 yarn http:dev
 
-# 生产
+# 生产环境
 yarn build && yarn http
 ```
 
-默认监听 `http://localhost:3000`：
+服务器将在 `http://localhost:3000` 启动，提供以下端点：
+- `GET /health` - 健康检查
+- `POST /mcp` - MCP协议通信
 
-- 健康检查：`GET /health`
-- MCP 端点：`POST /mcp`
+#### 2. 配置Cursor
 
-在 Cursor 的 MCP 配置中添加（示例 JSON 片段）：
+在 Cursor 的 MCP 配置中添加：
 
 ```json
 {
@@ -112,7 +121,29 @@ yarn build && yarn http
 }
 ```
 
-可选：若是自签名/内网环境，需在系统或代理层放行；本项目默认忽略 SSL 校验以降低接入门槛。
+#### 3. 验证连接
+
+启动服务器后，可以通过以下方式验证：
+
+**健康检查**：
+```bash
+curl http://localhost:3000/health
+```
+
+**测试工具调用**：
+```bash
+curl -X POST http://localhost:3000/mcp \
+  -H "Content-Type: application/json" \
+  -d '{
+    "jsonrpc": "2.0",
+    "id": 1,
+    "method": "tools/call",
+    "params": {
+      "name": "list_projects",
+      "arguments": {}
+    }
+  }'
+```
 
 ---
 
@@ -122,26 +153,30 @@ yarn build && yarn http
 2) 触发助手对话或工具使用（例如请求列出 GitLab 项目）
 3) 若配置成功，`gitlab` 服务器会自动被识别，工具列表可见：`list_projects`、`list_projects_with_branch`、`get_project_by_name`
 
-你也可以用 curl 验证 HTTP 端点（仅 HTTP 模式需要）：
-
-```bash
-curl -X POST http://localhost:3000/mcp \
-  -H "Content-Type: application/json" \
-  -d '{
-    "jsonrpc": "2.0",
-    "id": 1,
-    "method": "tools/call",
-    "params": { "name": "list_projects", "arguments": {} }
-  }'
-```
+**提示**：HTTP 模式需要确保服务器正在运行，Stdio 模式由 Cursor 自动启动。
 
 ---
 
 ### 常见问题
 
-- 401/403：检查 `GITLAB_TOKEN` 是否有效且具备 `read_api` 权限
-- 404：确认 `GITLAB_URL` 是否正确、实例是否支持 v4 API
-- 连接不到 HTTP：确认端口是否开放、同网段可达、代理/VPN/DNS 设置
-- Stdio 无法拉起：检查 `command/args` 路径是否为绝对路径、Node 版本是否为 18+
+#### 认证与权限问题
+- **401/403**：检查 `GITLAB_TOKEN` 是否有效且具备 `read_api` 权限
+- **404**：确认 `GITLAB_URL` 是否正确、实例是否支持 v4 API
+- **Token 过期**：重新生成访问令牌
+
+#### Stdio 模式问题
+- **无法拉起服务器**：检查 `command/args` 路径是否为绝对路径、Node 版本是否为 18+
+- **路径问题**：确保指向正确的可执行文件或源码文件
+
+#### HTTP 模式问题
+- **连接超时**：检查 HTTP 服务器是否正在运行（`yarn http:dev`）
+- **端口占用**：确认 3000 端口未被其他服务使用
+- **网络问题**：检查防火墙、代理设置，确保客户端能访问服务器
+- **跨域问题**：确保客户端和服务器在同一网络或正确配置 CORS
+
+#### 工具调用问题
+- **工具不可用**：确认 MCP 配置正确，服务器正常运行
+- **参数错误**：检查工具参数格式是否正确
+- **权限不足**：确认 token 有足够权限访问目标项目
 
 

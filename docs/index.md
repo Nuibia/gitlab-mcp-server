@@ -22,10 +22,23 @@ features:
     details: services 负责请求，utils 负责纯处理，类型定义完备。
 ---
 
-## 接下来
+## 🚀 快速开始
 
-- 使用方式：见「[使用方式（以 Cursor 为例）](/USAGE)」
-- 快速上手：见「[快速开始](/guide/quickstart)」
-- HTTP 模式：见「[HTTP 模式](/guide/http)」
-- 工具列表：见「[工具参考](/reference/tools)」
+### 👥 我是使用者
+如果您想开始使用GitLab MCP服务器：
+
+1. **[快速开始](/guide/quickstart)** - 5分钟上手
+2. **[完整使用指南](/USAGE)** - 详细的Cursor配置说明
+3. **[配置说明](/guide/config)** - 环境变量和参数配置
+
+### 👨‍💻 我是开发者
+如果您想为项目贡献代码：
+
+1. **[项目架构](/guide/architecture)** - 了解代码结构
+2. **[代码规范](/contributing/coding-rules)** - 开发规范和最佳实践
+3. **[部署说明](/DEPLOYMENT)** - 生产环境部署指南
+
+### 📚 其他资源
+
+- **[工具参考](/reference/tools)** - 所有MCP工具的详细说明
 
