@@ -7,8 +7,8 @@ import { registerGitLabTools } from "./mcp/register-tools.js";
 import { getConfig, getServerConfig } from "./services/config.js";
 import { checkGitLabToken } from "./services/index.js";
 
-// 检查GitLab token
-checkGitLabToken();
+// 注意：GitLab配置将在运行时通过Cursor客户端注入，无需启动时强制检查
+checkGitLabToken(false);
 
 // 获取配置
 const config = getConfig();
@@ -120,25 +120,70 @@ app.all('/mcp', async (req, res) => {
   }
 });
 
+// 配置更新端点（用于Cursor客户端注入配置）
+app.post('/config', (req, res) => {
+  try {
+    const { gitlabUrl, gitlabToken } = req.body;
+
+    if (gitlabUrl) {
+      process.env.GITLAB_URL = gitlabUrl;
+      console.log(`🔧 更新GitLab URL: ${gitlabUrl}`);
+    }
+
+    if (gitlabToken) {
+      process.env.GITLAB_TOKEN = gitlabToken;
+      console.log(`🔧 更新GitLab Token: ${gitlabToken ? '***已设置***' : '已清除'}`);
+    }
+
+    const currentConfig = getConfig();
+    res.json({
+      success: true,
+      message: '配置已更新',
+      config: {
+        gitlabUrl: currentConfig.gitlabUrl || "未配置",
+        hasToken: !!currentConfig.gitlabToken,
+        ready: !!(currentConfig.gitlabUrl && currentConfig.gitlabToken)
+      }
+    });
+  } catch (error) {
+    res.status(500).json({
+      success: false,
+      message: '配置更新失败',
+      error: error instanceof Error ? error.message : '未知错误'
+    });
+  }
+});
+
 // 健康检查端点
 app.get('/health', (req, res) => {
+  // 重新获取最新配置（支持动态更新）
+  const currentConfig = getConfig();
   res.json({
     status: 'ok',
     timestamp: new Date().toISOString(),
-    gitlabUrl: config.gitlabUrl,
-    hasToken: !!config.gitlabToken
+    gitlabUrl: currentConfig.gitlabUrl || "未配置 (请通过Cursor客户端注入)",
+    hasToken: !!currentConfig.gitlabToken,
+    ready: !!(currentConfig.gitlabUrl && currentConfig.gitlabToken)
   });
 });
 
 // 根路径
 app.get('/', (req, res) => {
+  // 重新获取最新配置
+  const currentConfig = getConfig();
   res.json({
     name: serverConfig.name,
     version: serverConfig.version,
     description: 'GitLab MCP HTTP服务器',
+    config: {
+      gitlabUrl: currentConfig.gitlabUrl || "未配置",
+      hasToken: !!currentConfig.gitlabToken,
+      ready: !!(currentConfig.gitlabUrl && currentConfig.gitlabToken)
+    },
     endpoints: {
       health: '/health',
-      mcp: '/mcp'
+      mcp: '/mcp',
+      config: '/config (POST - 更新配置)'
     }
   });
 });

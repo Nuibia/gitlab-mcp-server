@@ -2,16 +2,32 @@ import axios, { AxiosInstance } from "axios";
 import https from "https";
 import { GitLabBranch, GitLabProject, ProjectWithBranches } from "../types/index.js";
 
-// GitLab API配置
-const GITLAB_URL = process.env.GITLAB_URL || "https://gitlab.com/";
-const GITLAB_TOKEN = process.env.GITLAB_TOKEN;
+// 获取GitLab配置（动态读取）
+function getGitLabConfig() {
+  return {
+    url: process.env.GITLAB_URL,
+    token: process.env.GITLAB_TOKEN
+  };
+}
 
 // 检查GitLab token
-export function checkGitLabToken(): void {
-  if (!GITLAB_TOKEN) {
-    console.error("❌ 错误: 请设置GITLAB_TOKEN环境变量");
-    console.error("💡 提示: 请访问GitLab > Settings > Access Tokens 创建个人访问令牌");
-    process.exit(1);
+export function checkGitLabToken(forceExit: boolean = true): void {
+  const config = getGitLabConfig();
+  if (!config.token) {
+    console.warn("⚠️  警告: 未设置GITLAB_TOKEN环境变量");
+
+    if (forceExit) {
+      // Stdio模式：强制退出
+      console.error("❌ 错误: 请设置GITLAB_TOKEN环境变量");
+      console.error("💡 提示: 可以通过环境变量设置: export GITLAB_TOKEN=your_token");
+      console.error("   或运行: GITLAB_TOKEN=your_token yarn start");
+      process.exit(1);
+    } else {
+      // HTTP模式：仅警告，不退出
+      console.info("💡 提示: 可通过Cursor客户端的env字段注入配置，或使用POST /config端点更新配置");
+    }
+  } else {
+    console.log("✅ GitLab Token 已配置");
   }
 }
 
@@ -20,10 +36,12 @@ export function checkGitLabToken(): void {
  * 创建 axios 实例（默认忽略 SSL 校验，便于内网/自签名环境）。
  */
 export function createAxiosInstance(): AxiosInstance {
-  const config = {
+  const config = getGitLabConfig();
+
+  const axiosConfig = {
     timeout: 30000, // 30秒超时
     headers: {
-      "PRIVATE-TOKEN": GITLAB_TOKEN,
+      "PRIVATE-TOKEN": config.token,
       "Content-Type": "application/json"
     },
     // 禁用SSL验证（支持自签名证书）
@@ -32,7 +50,7 @@ export function createAxiosInstance(): AxiosInstance {
     })
   };
 
-  return axios.create(config);
+  return axios.create(axiosConfig);
 }
 
 // 获取GitLab项目列表
@@ -40,9 +58,16 @@ export function createAxiosInstance(): AxiosInstance {
  * 拉取项目列表，默认每页 100 个，按更新时间倒序。
  */
 export async function getGitLabProjects(): Promise<GitLabProject[]> {
+  const config = getGitLabConfig();
+
+  // 运行时检查配置
+  if (!config.url || !config.token) {
+    throw new Error("GitLab配置缺失。请通过Cursor客户端的env字段配置GITLAB_URL和GITLAB_TOKEN");
+  }
+
   const axiosInstance = createAxiosInstance();
 
-  const response = await axiosInstance.get<GitLabProject[]>(`${GITLAB_URL}/api/v4/projects`, {
+  const response = await axiosInstance.get<GitLabProject[]>(`${config.url}/api/v4/projects`, {
     params: {
       per_page: 100, // 每页100个项目
       order_by: "updated_at",
@@ -57,8 +82,15 @@ export async function getGitLabProjects(): Promise<GitLabProject[]> {
  * 通过项目名或完整命名空间搜索项目，优先返回精确匹配；否则返回第一个近似匹配或空。
  */
 export async function getProjectByName(projectName: string): Promise<GitLabProject | null> {
+  const config = getGitLabConfig();
+
+  // 运行时检查配置
+  if (!config.url || !config.token) {
+    throw new Error("GitLab配置缺失。请通过Cursor客户端的env字段配置GITLAB_URL和GITLAB_TOKEN");
+  }
+
   const axiosInstance = createAxiosInstance();
-  const response = await axiosInstance.get<GitLabProject[]>(`${GITLAB_URL}/api/v4/projects`, {
+  const response = await axiosInstance.get<GitLabProject[]>(`${config.url}/api/v4/projects`, {
     params: {
       search: projectName,
       simple: true,
@@ -83,10 +115,17 @@ export async function getProjectByName(projectName: string): Promise<GitLabProje
  * 拉取指定项目的分支列表。
  */
 export async function getProjectBranches(projectId: number): Promise<GitLabBranch[]> {
+  const config = getGitLabConfig();
+
+  // 运行时检查配置
+  if (!config.url || !config.token) {
+    throw new Error("GitLab配置缺失。请通过Cursor客户端的env字段配置GITLAB_URL和GITLAB_TOKEN");
+  }
+
   const axiosInstance = createAxiosInstance();
 
   try {
-    const response = await axiosInstance.get<GitLabBranch[]>(`${GITLAB_URL}/api/v4/projects/${projectId}/repository/branches`, {
+    const response = await axiosInstance.get<GitLabBranch[]>(`${config.url}/api/v4/projects/${projectId}/repository/branches`, {
       params: {
         per_page: 100 // 每页100个分支
       }

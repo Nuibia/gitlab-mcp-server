@@ -8,10 +8,10 @@ import { Config } from "../types/index.js";
  * - PORT: HTTP 端口（仅 http-server 使用），默认 3000
  */
 
-// 获取环境配置
+// 获取环境配置（动态读取最新值）
 export function getConfig(): Config {
   return {
-    gitlabUrl: process.env.GITLAB_URL || "https://gitlab.com/",
+    gitlabUrl: process.env.GITLAB_URL || "",
     gitlabToken: process.env.GITLAB_TOKEN || "",
     port: parseInt(process.env.PORT || "3000", 10)
   };
