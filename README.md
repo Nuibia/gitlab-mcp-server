@@ -104,10 +104,10 @@ HTTP 服务器主要端点（详见 `docs/guide/http.md`）：
 
 ## 已注册工具
 
-- `list_projects`: 列出所有项目（无参数）
+- `list_projects`: 获取GitLab项目列表
 - `list_projects_with_branch`: 按分支名搜索项目
-  - 参数：`{ branchName: string }`（默认 `"master"`）
-- `get_project_by_name`: 按项目名搜索
+  - 参数：`{ branchName: string }`
+- `get_project_by_name`: 按项目名搜索项目
   - 参数：`{ projectName: string }`
 
 示例（HTTP 模式 + curl）：
