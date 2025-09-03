@@ -1,25 +1,15 @@
-# 👥 使用者指南 - 完整使用方式
+# 🔧 完整使用指南
 
-> **📖 面向对象**：只需要使用GitLab MCP服务器的用户
+> **📖 面向对象**：需要完整配置和高级用法的用户
 >
-> 本指南将帮助您完整配置和使用GitLab MCP服务器，包括Stdio和HTTP两种传输方式。
+> 前提：请先完成[快速开始](../guide/quickstart.md)的基本设置
 
 本项目支持两种 MCP 使用方式：
 
-- Stdio 传输：客户端以子进程方式直接启动服务器，标准输入/输出通信
-- HTTP 传输：服务器以 HTTP/SSE 暴露 MCP 端点，客户端通过网络通信
+- **Stdio 传输**：客户端以子进程方式直接启动服务器，标准输入/输出通信
+- **HTTP 传输**：服务器以 HTTP/SSE 暴露 MCP 端点，客户端通过网络通信
 
-下面以 Cursor 为例，分别给出配置与验证步骤。
-
-### 前置准备
-
-- Node.js 18+（建议：`nvm install 18 && nvm use 18`）
-- 包管理器：yarn
-- 环境变量：至少 `GITLAB_TOKEN`（需 `read_api` 权限），可选 `GITLAB_URL`（默认 `https://gitlab.com/`）
-
-```bash
-yarn install
-```
+下面以 Cursor 为例，分别给出详细配置与验证步骤。
 
 ---
 
@@ -62,8 +52,9 @@ yarn build
   "mcpServers": {
     "gitlab": {
       "transport": "stdio",
-      "command": "tsx",
+      "command": "yarn",
       "args": [
+        "tsx",
         "/ABSOLUTE/PATH/TO/gitlab-mcp-server/src/index.ts"
       ],
       "env": {
@@ -123,7 +114,7 @@ yarn build && yarn http
 
 #### 3. 验证连接
 
-启动服务器后，可以通过以下方式验证：
+HTTP 服务器启动后，可以通过以下方式验证：
 
 **健康检查**：
 ```bash
@@ -145,15 +136,22 @@ curl -X POST http://localhost:3000/mcp \
   }'
 ```
 
+> 💡 **提示**：更多验证方法请参考[快速开始](../guide/quickstart.md)的验证部分
+
 ---
 
 ### 在 Cursor 中验证
 
 1) 打开 Cursor，新建或进入任意工作区
 2) 触发助手对话或工具使用（例如请求列出 GitLab 项目）
-3) 若配置成功，`gitlab` 服务器会自动被识别，工具列表可见：`list_projects`、`list_projects_with_branch`、`get_project_by_name`
+3) 若配置成功，`gitlab` 服务器会自动被识别，工具列表可见：
+   - `list_projects`：获取项目列表
+   - `list_projects_with_branch`：按分支名搜索项目
+   - `get_project_by_name`：按项目名搜索项目
 
-**提示**：HTTP 模式需要确保服务器正在运行，Stdio 模式由 Cursor 自动启动。
+**提示**：
+- HTTP 模式需要确保服务器正在运行
+- Stdio 模式由 Cursor 自动启动，无需手动启动服务器
 
 ---
 

@@ -2,15 +2,6 @@
 
 一个基于 TypeScript 的 Model Context Protocol (MCP) 服务器，用于查询和管理 GitLab 项目。
 
-## 功能特性
-
-- 🔍 **项目列表**: 获取 GitLab 实例中的所有项目
-- 🌿 **按分支名搜索项目**: 支持模糊匹配（不区分大小写）
-- 🧭 **按项目名搜索**: 支持精确与模糊匹配
-- 🧩 **模块化设计**: `services` 负责请求，`utils` 负责纯数据处理
-- 🔒 **自签名证书**: 默认忽略 SSL 校验，便于内网/自签名环境接入
-- 🌐 **HTTP 模式**: 提供 HTTP 传输，适配更多客户端
-
 ## 项目结构
 
 ```
@@ -18,9 +9,9 @@ gitlab-mcp-server/
 ├── README.md
 ├── docs/
 │   ├── index.md                # 文档首页（VitePress）
-│   ├── USAGE.md                # 使用方式（Cursor 配置示例）
+│   ├── USAGE.md                # 完整使用指南（详细配置）
 │   ├── guide/
-│   │   ├── quickstart.md       # 快速开始
+│   │   ├── quickstart.md       # 快速开始（5分钟入门）
 │   │   └── http.md             # HTTP 模式指南
 │   ├── reference/
 │   │   └── tools.md            # 工具参考
@@ -53,11 +44,20 @@ gitlab-mcp-server/
 
 ## 技术栈
 
-- TypeScript 5
-- MCP 官方 SDK
-- Express（HTTP 服务器）
-- Axios
-- Zod（工具参数校验）
+- **TypeScript 5** - 类型安全的开发体验
+- **MCP 官方 SDK** - Model Context Protocol 实现
+- **Express** - HTTP 服务器框架
+- **Axios** - HTTP 客户端
+- **Zod** - 运行时类型验证
+
+## 功能特性
+
+- 🔍 **项目列表**: 获取 GitLab 实例中的所有项目
+- 🌿 **按分支名搜索项目**: 支持模糊匹配（不区分大小写）
+- 🧭 **按项目名搜索**: 支持精确与模糊匹配
+- 🧩 **模块化设计**: `services` 负责请求，`utils` 负责纯数据处理
+- 🔒 **自签名证书**: 默认忽略 SSL 校验，便于内网/自签名环境接入
+- 🌐 **HTTP 模式**: 提供 HTTP 传输，适配更多客户端
 
 ## 安装与环境变量
 
@@ -105,6 +105,13 @@ yarn build && yarn http
 - `get_project_by_name`: 按项目名搜索项目
   - 参数：`{ projectName: string }`
 
+## 📖 用户指南
+
+如果你是最终用户，需要配置和使用这个MCP服务器：
+
+- **🚀 快速开始**: [5分钟入门指南](/docs/guide/quickstart.md)
+- **🔧 详细配置**: [完整使用指南](/docs/USAGE.md)
+
 ## 使用方式
 
 本项目支持两种 MCP 使用方式：
@@ -112,7 +119,8 @@ yarn build && yarn http
 - **Stdio模式**：适合本地开发，直接与Cursor集成，无需手动启动服务器
 - **HTTP模式**：适合内网环境、自签名证书环境，或需要跨进程通信的场景
 
-详见：[使用方式（Cursor配置）](/USAGE)
+📖 **快速开始**：[5分钟入门指南](/docs/guide/quickstart.md)  
+🔧 **完整配置**：[详细使用指南](/docs/USAGE.md)
 
 ## 故障排除
 
@@ -124,15 +132,15 @@ yarn build && yarn http
 
 ## 开发约定
 
-- `services/` 放请求与含副作用逻辑
-- `utils/` 放纯函数与数据处理
-- 详见 `docs/contributing/coding-rules.md`
+- `services/` 存放请求和副作用逻辑
+- `utils/` 存放纯函数和数据处理逻辑
+- 详细规范请参考 `docs/contributing/coding-rules.md`
 
 ## 许可证与贡献
 
-- 许可证：MIT
-- 欢迎通过 Issue/PR 参与改进
-  - 提交前请阅读 `docs/CODING_RULES.md`
+- **许可证**: MIT
+- **欢迎贡献**: 通过 Issue/PR 参与改进
+- **贡献前请阅读**: `docs/contributing/coding-rules.md`
 
 ## 相关链接
 
