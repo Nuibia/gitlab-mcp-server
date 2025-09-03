@@ -4,6 +4,7 @@ export default defineConfig({
   lang: 'zh-CN',
   title: 'GitLab MCP Server',
   description: '基于 MCP 的 GitLab 项目查询与管理服务',
+  base: process.env.GITHUB_ACTIONS ? '/gitlab-mcp-server/' : '/', // GitHub Pages部署路径
   cleanUrls: true,
   lastUpdated: true,
   themeConfig: {

@@ -1,0 +1,44 @@
+name: Deploy VitePress to GitHub Pages
+
+on:
+  push:
+    branches: [ master, main ]
+    paths:
+      - 'docs/**'
+      - '.vitepress/**'
+      - '.github/workflows/deploy-docs.yml'
+  pull_request:
+    branches: [ master, main ]
+    paths:
+      - 'docs/**'
+      - '.vitepress/**'
+
+jobs:
+  build-and-deploy:
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout 🛎️
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - name: Setup Node.js ⚙️
+        uses: actions/setup-node@v4
+        with:
+          node-version: '18'
+          cache: 'yarn'
+
+      - name: Install dependencies 📦
+        run: yarn install --frozen-lockfile
+
+      - name: Build VitePress site 🏗️
+        run: yarn docs:build
+
+      - name: Deploy to GitHub Pages 🚀
+        if: github.ref == 'refs/heads/master' || github.ref == 'refs/heads/main'
+        uses: peaceiris/actions-gh-pages@v3
+        with:
+          github_token: ${{ secrets.GITHUB_TOKEN }}
+          publish_dir: ./docs/.vitepress/dist
+          cname: docs.gitlab-mcp-server.com  # 可选：自定义域名

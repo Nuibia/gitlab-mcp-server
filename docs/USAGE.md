@@ -2,7 +2,7 @@
 
 > **📖 面向对象**：需要完整配置和高级用法的用户
 >
-> 前提：请先完成[快速开始](../guide/quickstart.md)的基本设置
+> 前提：请先完成[快速开始](/guide/quickstart)的基本设置
 
 本项目支持两种 MCP 使用方式：
 
@@ -136,7 +136,7 @@ curl -X POST http://localhost:3000/mcp \
   }'
 ```
 
-> 💡 **提示**：更多验证方法请参考[快速开始](../guide/quickstart.md)的验证部分
+> 💡 **提示**：更多验证方法请参考[快速开始](/guide/quickstart)的验证部分
 
 ---
 
