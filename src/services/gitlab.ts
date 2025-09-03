@@ -2,18 +2,26 @@ import axios, { AxiosInstance } from "axios";
 import https from "https";
 import { GitLabBranch, GitLabProject, ProjectWithBranches } from "../types/index.js";
 
-// 获取GitLab配置（动态读取）
-function getGitLabConfig() {
-  return {
-    url: process.env.GITLAB_URL,
-    token: process.env.GITLAB_TOKEN
-  };
+// ==================== 统一配置系统 ====================
+// 所有模式都使用同一个配置对象，HTTP模式在启动时更新它
+export const CONFIG = {
+  gitlabUrl: process.env.GITLAB_URL || "https://gitlab.com/",
+  gitlabToken: process.env.GITLAB_TOKEN
+};
+
+// HTTP模式配置更新函数
+export function updateConfig(url: string, token: string): void {
+  CONFIG.gitlabUrl = url;
+  CONFIG.gitlabToken = token;
+  console.log(`🔧 配置已更新: ${url}`);
 }
 
+// ==================== 配置检查 ====================
 // 检查GitLab token
 export function checkGitLabToken(forceExit: boolean = true): void {
-  const config = getGitLabConfig();
-  if (!config.token) {
+  const token = CONFIG.gitlabToken;
+
+  if (!token) {
     console.warn("⚠️  警告: 未设置GITLAB_TOKEN环境变量");
 
     if (forceExit) {
@@ -36,12 +44,10 @@ export function checkGitLabToken(forceExit: boolean = true): void {
  * 创建 axios 实例（默认忽略 SSL 校验，便于内网/自签名环境）。
  */
 export function createAxiosInstance(): AxiosInstance {
-  const config = getGitLabConfig();
-
   const axiosConfig = {
     timeout: 30000, // 30秒超时
     headers: {
-      "PRIVATE-TOKEN": config.token,
+      "PRIVATE-TOKEN": CONFIG.gitlabToken,
       "Content-Type": "application/json"
     },
     // 禁用SSL验证（支持自签名证书）
@@ -58,16 +64,14 @@ export function createAxiosInstance(): AxiosInstance {
  * 拉取项目列表，默认每页 100 个，按更新时间倒序。
  */
 export async function getGitLabProjects(): Promise<GitLabProject[]> {
-  const config = getGitLabConfig();
-
-  // 运行时检查配置
-  if (!config.url || !config.token) {
+  // 检查配置
+  if (!CONFIG.gitlabUrl || !CONFIG.gitlabToken) {
     throw new Error("GitLab配置缺失。请通过Cursor客户端的env字段配置GITLAB_URL和GITLAB_TOKEN");
   }
 
   const axiosInstance = createAxiosInstance();
 
-  const response = await axiosInstance.get<GitLabProject[]>(`${config.url}/api/v4/projects`, {
+  const response = await axiosInstance.get<GitLabProject[]>(`${CONFIG.gitlabUrl}/api/v4/projects`, {
     params: {
       per_page: 100, // 每页100个项目
       order_by: "updated_at",
@@ -80,17 +84,16 @@ export async function getGitLabProjects(): Promise<GitLabProject[]> {
 // 通过项目名查询项目信息
 /**
  * 通过项目名或完整命名空间搜索项目，优先返回精确匹配；否则返回第一个近似匹配或空。
+ * @param projectName 项目名称
  */
 export async function getProjectByName(projectName: string): Promise<GitLabProject | null> {
-  const config = getGitLabConfig();
-
-  // 运行时检查配置
-  if (!config.url || !config.token) {
+  // 检查配置
+  if (!CONFIG.gitlabUrl || !CONFIG.gitlabToken) {
     throw new Error("GitLab配置缺失。请通过Cursor客户端的env字段配置GITLAB_URL和GITLAB_TOKEN");
   }
 
   const axiosInstance = createAxiosInstance();
-  const response = await axiosInstance.get<GitLabProject[]>(`${config.url}/api/v4/projects`, {
+  const response = await axiosInstance.get<GitLabProject[]>(`${CONFIG.gitlabUrl}/api/v4/projects`, {
     params: {
       search: projectName,
       simple: true,
@@ -113,19 +116,18 @@ export async function getProjectByName(projectName: string): Promise<GitLabProje
 // 获取项目的分支列表
 /**
  * 拉取指定项目的分支列表。
+ * @param projectId 项目ID
  */
 export async function getProjectBranches(projectId: number): Promise<GitLabBranch[]> {
-  const config = getGitLabConfig();
-
-  // 运行时检查配置
-  if (!config.url || !config.token) {
+  // 检查配置
+  if (!CONFIG.gitlabUrl || !CONFIG.gitlabToken) {
     throw new Error("GitLab配置缺失。请通过Cursor客户端的env字段配置GITLAB_URL和GITLAB_TOKEN");
   }
 
   const axiosInstance = createAxiosInstance();
 
   try {
-    const response = await axiosInstance.get<GitLabBranch[]>(`${config.url}/api/v4/projects/${projectId}/repository/branches`, {
+    const response = await axiosInstance.get<GitLabBranch[]>(`${CONFIG.gitlabUrl}/api/v4/projects/${projectId}/repository/branches`, {
       params: {
         per_page: 100 // 每页100个分支
       }
@@ -149,7 +151,7 @@ export async function getProjectsWithBranch(branchName: string): Promise<Project
     const projectsWithBranches: ProjectWithBranches[] = [];
 
     console.log(`🔍 正在搜索包含分支 "${branchName}" 的项目...`);
-    
+
     // 并发限制（可通过环境变量覆盖），默认同时处理 8 个项目
     const concurrencyLimit = Math.max(1, parseInt(process.env.GITLAB_FETCH_CONCURRENCY || "8", 10));
 

@@ -5,6 +5,7 @@ import cors from "cors";
 import express from "express";
 import { registerGitLabTools } from "./mcp/register-tools.js";
 import { getConfig, getServerConfig } from "./services/config.js";
+import { updateConfig } from "./services/gitlab.js";
 import { checkGitLabToken } from "./services/index.js";
 
 // 注意：GitLab配置将在运行时通过Cursor客户端注入，无需启动时强制检查
@@ -125,24 +126,26 @@ app.post('/config', (req, res) => {
   try {
     const { gitlabUrl, gitlabToken } = req.body;
 
-    if (gitlabUrl) {
+    if (gitlabUrl && gitlabToken) {
+      updateConfig(gitlabUrl, gitlabToken);
+      console.log(`🔧 配置已更新: ${gitlabUrl}`);
+
+      // 同时更新环境变量，以便下次重启时使用
       process.env.GITLAB_URL = gitlabUrl;
-      console.log(`🔧 更新GitLab URL: ${gitlabUrl}`);
-    }
-
-    if (gitlabToken) {
       process.env.GITLAB_TOKEN = gitlabToken;
-      console.log(`🔧 更新GitLab Token: ${gitlabToken ? '***已设置***' : '已清除'}`);
+    } else {
+      return res.status(400).json({
+        success: false,
+        message: '配置更新失败：需要同时提供 gitlabUrl 和 gitlabToken'
+      });
     }
-
-    const currentConfig = getConfig();
     res.json({
       success: true,
       message: '配置已更新',
       config: {
-        gitlabUrl: currentConfig.gitlabUrl || "未配置",
-        hasToken: !!currentConfig.gitlabToken,
-        ready: !!(currentConfig.gitlabUrl && currentConfig.gitlabToken)
+        gitlabUrl,
+        hasToken: true,
+        ready: true
       }
     });
   } catch (error) {
