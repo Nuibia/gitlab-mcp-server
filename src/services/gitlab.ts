@@ -64,16 +64,46 @@ export function createAxiosInstance(): AxiosInstance {
  * 拉取项目列表，默认每页 100 个，按更新时间倒序。
  */
 export async function getGitLabProjects(): Promise<GitLabProject[]> {
-  // 检查配置
-  if (!CONFIG.gitlabUrl || !CONFIG.gitlabToken) {
-    throw new Error("GitLab配置缺失。请通过Cursor客户端的env字段配置GITLAB_URL和GITLAB_TOKEN");
+  // 首先使用全局配置作为默认值
+  let gitlabUrl = CONFIG.gitlabUrl;
+  let gitlabToken = CONFIG.gitlabToken;
+
+  // 尝试从process.env获取运行时配置（如果有的话）
+  // 这个方法避免了循环依赖
+  const envUrl = process.env.RUNTIME_GITLAB_URL;
+  const envToken = process.env.RUNTIME_GITLAB_TOKEN;
+
+  if (envUrl && envToken) {
+    gitlabUrl = envUrl;
+    gitlabToken = envToken;
+
+    // 清理环境变量，避免影响后续请求
+    delete process.env.RUNTIME_GITLAB_URL;
+    delete process.env.RUNTIME_GITLAB_TOKEN;
   }
 
-  const axiosInstance = createAxiosInstance();
+  // 检查配置
+  if (!gitlabUrl || !gitlabToken) {
+    throw new Error("GitLab配置缺失。请通过环境变量或运行时参数配置GITLAB_URL和GITLAB_TOKEN");
+  }
 
-  const response = await axiosInstance.get<GitLabProject[]>(`${CONFIG.gitlabUrl}/api/v4/projects`, {
+  // 创建axios实例（使用配置）
+  const axiosConfig = {
+    timeout: 30000,
+    headers: {
+      "PRIVATE-TOKEN": gitlabToken,
+      "Content-Type": "application/json"
+    },
+    httpsAgent: new https.Agent({
+      rejectUnauthorized: false
+    })
+  };
+
+  const axiosInstance = axios.create(axiosConfig);
+
+  const response = await axiosInstance.get<GitLabProject[]>(`${gitlabUrl}/api/v4/projects`, {
     params: {
-      per_page: 100, // 每页100个项目
+      per_page: 100,
       order_by: "updated_at",
       sort: "desc"
     }

@@ -52,4 +52,107 @@ export GITLAB_FETCH_CONCURRENCY=2  # 降低并发避免限流
 export PORT=3000
 ```
 
+## 🚀 运行时动态配置
+
+除了传统的环境变量配置外，项目还支持运行时动态配置，允许在不重启服务器的情况下动态切换GitLab实例。
+
+### 核心特性
+
+- ✅ **启动时无需配置**：服务器启动时不需要设置GITLAB_TOKEN
+- ✅ **运行时动态切换**：每次工具调用时通过HTTP头传递配置
+- ✅ **多实例支持**：同时使用多个GitLab实例
+- ✅ **会话隔离**：不同会话可以使用不同的配置
+
+### Cursor配置
+
+```json
+{
+  "mcpServers": {
+    "gitlab-dynamic": {
+      "transport": "http",
+      "url": "http://localhost:3000/mcp",
+      "env": {}
+    }
+  }
+}
+```
+
+### 使用方式
+
+#### 1. 启动服务器
+```bash
+# 无需设置环境变量
+yarn http:dev
+```
+
+#### 2. HTTP请求传递配置
+```bash
+# 初始化连接
+curl -X POST http://localhost:3000/mcp \
+  -H "Content-Type: application/json" \
+  -d '{
+    "jsonrpc": "2.0",
+    "id": 1,
+    "method": "initialize",
+    "params": {
+      "protocolVersion": "2024-11-05",
+      "capabilities": {"tools": {}},
+      "clientInfo": {"name": "test-client", "version": "1.0.0"}
+    }
+  }'
+
+# 调用工具（带配置）
+curl -X POST http://localhost:3000/mcp \
+  -H "mcp-session-id: YOUR_SESSION_ID" \
+  -H "X-GitLab-URL: https://gitlab.company.com" \
+  -H "X-GitLab-Token: your-token" \
+  -d '{
+    "jsonrpc": "2.0",
+    "id": 2,
+    "method": "tools/call",
+    "params": {"name": "list_projects"}
+  }'
+```
+
+### 配置传递方式
+
+支持三种HTTP头传递配置的方式：
+
+1. **X-GitLab-URL**: GitLab实例URL
+2. **X-GitLab-Token**: GitLab访问令牌
+3. **mcp-session-id**: 会话ID（自动生成）
+
+### 工作流程
+
+```mermaid
+sequenceDiagram
+    participant Cursor
+    participant MCP as MCP服务器
+    participant GitLab
+
+    Cursor->>MCP: 初始化连接
+    MCP-->>Cursor: 返回session ID
+
+    Cursor->>MCP: 工具调用 (带配置头)
+    Note over MCP: 临时应用运行时配置
+    MCP->>GitLab: API调用 (使用运行时配置)
+    GitLab-->>MCP: 返回数据
+    Note over MCP: 恢复原始配置
+    MCP-->>Cursor: 返回结果
+```
+
+### 安全性说明
+
+- 配置只在内存中临时使用，不持久化存储
+- 每个请求独立配置，互不影响
+- 请求完成后自动清理配置
+- 支持会话级别的配置隔离
+
+### 适用场景
+
+- 需要频繁切换不同GitLab实例的开发环境
+- 多租户应用，每个用户使用不同的GitLab实例
+- CI/CD环境中动态配置GitLab连接
+- 需要在运行时根据条件选择GitLab实例的场景
+
 

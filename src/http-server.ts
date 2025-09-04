@@ -37,6 +37,71 @@ function generateSessionId(): string {
   return Math.random().toString(36).substring(2, 15) + Math.random().toString(36).substring(2, 15);
 }
 
+// 全局运行时配置存储（按session隔离）
+const runtimeConfigStore = new Map<string, { gitlabUrl: string; gitlabToken: string }>();
+
+// 当前正在处理的session ID（用于工具函数获取配置）
+let currentProcessingSessionId: string | null = null;
+
+// 获取当前请求的运行时配置
+export function getCurrentRuntimeConfig(sessionId?: string): { gitlabUrl?: string; gitlabToken?: string } | null {
+  const targetSessionId = sessionId || currentProcessingSessionId;
+  if (!targetSessionId) return null;
+  return runtimeConfigStore.get(targetSessionId) || null;
+}
+
+// 设置当前处理的session ID
+function setCurrentProcessingSession(sessionId: string) {
+  currentProcessingSessionId = sessionId;
+}
+
+// 清除当前处理的session ID
+function clearCurrentProcessingSession() {
+  currentProcessingSessionId = null;
+}
+
+// 运行时配置注入函数 - 每次请求都检查配置
+function injectRuntimeConfig(req: any): { gitlabUrl: string; gitlabToken: string } | null {
+  let gitlabUrl: string | undefined;
+  let gitlabToken: string | undefined;
+
+  // 方式1：从MCP扩展参数获取（优先级最高）
+  if (req.body?.params?._gitlabConfig) {
+    const config = req.body.params._gitlabConfig;
+    gitlabUrl = config.gitlabUrl;
+    gitlabToken = config.gitlabToken;
+  }
+
+  // 方式2：从HTTP请求头获取
+  if (!gitlabUrl || !gitlabToken) {
+    const headerUrl = req.headers['x-gitlab-url'] as string;
+    const headerToken = req.headers['x-gitlab-token'] as string;
+
+    if (headerUrl && headerToken) {
+      gitlabUrl = headerUrl;
+      gitlabToken = headerToken;
+    }
+  }
+
+  // 方式3：从查询参数获取
+  if (!gitlabUrl || !gitlabToken) {
+    const queryUrl = req.query?.gitlabUrl as string;
+    const queryToken = req.query?.gitlabToken as string;
+
+    if (queryUrl && queryToken) {
+      gitlabUrl = queryUrl;
+      gitlabToken = queryToken;
+    }
+  }
+
+  // 如果获取到完整配置，返回它
+  if (gitlabUrl && gitlabToken) {
+    return { gitlabUrl, gitlabToken };
+  }
+
+  return null;
+}
+
 // 创建新的MCP服务器实例和transport
 function createServerInstance(sessionId: string) {
   // 为每个session创建独立的服务器实例
@@ -63,10 +128,11 @@ app.all('/mcp', async (req, res) => {
     let sessionId = req.headers['mcp-session-id'] as string;
     let transport: StreamableHTTPServerTransport | undefined;
 
-    // 检查是否是初始化请求
     if (!sessionId && isInitializeRequest(req.body)) {
+      // 自动注入配置（如果提供的话）
+      injectRuntimeConfig(req);
+
       // 新初始化请求 - 创建新的transport
-      console.log(`🚀 创建新的transport for 初始化请求`);
       const sessionIdForTransport = generateSessionId();
       const { server, transport: newTransport } = createServerInstance(sessionIdForTransport);
       transport = newTransport;
@@ -83,7 +149,6 @@ app.all('/mcp', async (req, res) => {
 
       // 设置清理定时器
       setTimeout(() => {
-        console.log(`🧹 清理过期session: ${actualSessionId}`);
         transport?.close();
         activeTransports.delete(actualSessionId);
       }, 30 * 60 * 1000); // 30分钟后清理
@@ -91,7 +156,22 @@ app.all('/mcp', async (req, res) => {
     } else if (sessionId && activeTransports.has(sessionId)) {
       // 使用现有的transport
       transport = activeTransports.get(sessionId);
-      console.log(`🔄 使用现有transport for session: ${sessionId}`);
+
+      // 设置当前处理的session ID
+      setCurrentProcessingSession(sessionId);
+
+      // 对于工具调用请求，检查是否有运行时配置
+      if (req.body?.method === 'tools/call') {
+        const runtimeConfig = injectRuntimeConfig(req);
+        if (runtimeConfig) {
+          // 将配置存储到session对应的存储中
+          runtimeConfigStore.set(sessionId, runtimeConfig);
+
+          // 同时设置环境变量，供服务层使用
+          process.env.RUNTIME_GITLAB_URL = runtimeConfig.gitlabUrl;
+          process.env.RUNTIME_GITLAB_TOKEN = runtimeConfig.gitlabToken;
+        }
+      }
 
     } else {
       // 无效请求
@@ -108,13 +188,20 @@ app.all('/mcp', async (req, res) => {
 
     // 处理请求
     if (transport) {
-      await transport.handleRequest(req, res, req.body);
+      try {
+        await transport.handleRequest(req, res, req.body);
+      } finally {
+        // 清除当前处理的session ID
+        clearCurrentProcessingSession();
+      }
     } else {
+      clearCurrentProcessingSession();
       res.status(500).json({ error: 'Transport not initialized' });
     }
 
   } catch (error) {
     console.error('处理MCP请求失败:', error);
+    clearCurrentProcessingSession();
     if (!res.headersSent) {
       res.status(500).json({ error: '内部服务器错误' });
     }
