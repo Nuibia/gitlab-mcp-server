@@ -429,41 +429,246 @@ Agent: 监控部署状态并报告结果
 - CI/CD 流水线
 - 团队协作信息
 
-**MCP 服务器就是连接 AI 助手和 GitLab 的桥梁**，让 AI 能够：
-- 快速了解项目结构
-- 帮你分析代码分支
-- 自动生成项目报告
-- 协助代码审查
+**MCP 是 AI 助手的"工具箱"**，让 AI 能够调用各种外部工具和服务。
 
-> **📖 面向对象**：对 MCP 协议和 GitLab API 集成感兴趣的开发者
+> **📖 面向对象**：想要开发 MCP 服务器的开发者
 >
-> 本文档深度剖析 GitLab MCP 服务器的技术实现，分享架构设计理念和开发经验。
+> 本文档深入介绍 MCP 协议的核心概念，通过 GitLab 项目演示开发全流程。
 
-## 🎯 项目背景与价值
+## 🎯 GitLab 项目演示
 
-### 为什么需要 GitLab MCP 服务器？
+### 为什么选择 GitLab 作为演示案例？
 
-在 AI 编程助手（如 Cursor、Claude Desktop）成为开发者日常工具的今天，如何让 AI 更好地理解和操作企业内部的代码资产成为了一个重要课题。
+我们选择 GitLab 作为 MCP 开发的演示案例，因为：
 
-GitLab MCP 服务器正是为了解决这一问题而生：
+- **📚 丰富的 API**：GitLab 提供了完整的 REST API，便于展示 MCP 工具调用
+- **🏢 企业级应用**：代表了典型的企业级工具集成场景
+- **🔒 权限管理**：展示了 MCP 在企业环境中的安全控制
+- **🚀 实用价值**：开发者日常工作中常用的工具
 
-- **🔗 连接桥梁**：打通 AI 工具与企业 GitLab 的连接
-- **🏢 内网适配**：完美支持企业内网环境和私有化部署
-- **📊 项目洞察**：让 AI 快速了解项目结构、分支状态等关键信息
-- **⚡ 提效工具**：减少开发者在项目查询上的时间消耗
+## 🏗️ MCP 开发技术栈
 
-## 🏗️ 核心技术栈剖析
-
-### MCP 协议 - 标准化的 AI 工具协议
+### MCP SDK 核心使用
 
 ```typescript
-// MCP 服务器的实际使用方式
-const server = new McpServer({
-  name: "gitlab-mcp-server",
-  version: "1.0.0"
+// 1. 创建 MCP 服务器实例
+const server = new Server(
+  {
+    name: "gitlab-mcp-server",
+    version: "1.0.0",
+  },
+  {
+    capabilities: {
+      tools: {},
+    },
+  }
+);
+
+// 2. 注册工具
+server.setRequestHandler("tools/call", async (request) => {
+  const { name, arguments: args } = request.params;
+
+  switch (name) {
+    case "list_projects":
+      // 调用 GitLab API 获取项目列表
+      const projects = await getGitLabProjects();
+      return {
+        content: [{ type: "text", text: formatProjectsList(projects) }]
+      };
+    case "get_project_by_name":
+      // 根据项目名搜索项目
+      const project = await getProjectByName(args.projectName);
+      return {
+        content: [{ type: "text", text: formatProjectInfo(project) }]
+      };
+    default:
+      throw new Error(`Unknown tool: ${name}`);
+  }
 });
 
-// 注册工具的实际API
+// 3. 连接传输层
+const transport = new StdioServerTransport();
+await server.connect(transport);
+```
+
+### MCP 开发必备工具
+
+```json
+{
+  "核心依赖": {
+    "@modelcontextprotocol/sdk": "^1.17.1",
+    "zod": "^3.23.8"
+  },
+  "开发工具": {
+    "typescript": "^5.3.0",
+    "tsx": "^4.7.0"
+  },
+  "传输层": {
+    "stdio": "内置支持",
+    "http": "可选扩展"
+  }
+}
+```
+
+**MCP 开发三要素：**
+- **📦 SDK**：官方协议实现库
+- **🔧 工具**：你的业务逻辑封装
+- **🌐 传输**：连接 AI 助手和服务器
+
+## 🏛️ MCP 通用架构模式
+
+### MCP 服务器的标准架构
+
+```
+┌─────────────────┐
+│   AI 助手         │ ← Claude、Cursor 等
+├─────────────────┤
+│   MCP 协议层      │ ← 标准化通信协议
+├─────────────────┤
+│   工具层          │ ← 你的业务工具实现
+├─────────────────┤
+│   外部服务        │ ← GitLab、数据库等
+└─────────────────┘
+```
+
+### MCP 开发的核心原则
+
+- **🎯 协议标准化**：使用官方 SDK，确保协议兼容性
+- **🔧 工具解耦**：业务逻辑与协议逻辑分离
+- **🌐 传输灵活**：支持多种传输方式（Stdio/HTTP）
+- **📦 模块化设计**：每个工具都是独立的模块
+
+## 🔧 MCP 开发关键技术
+
+### 工具定义与注册
+
+```typescript
+// 1. 定义工具接口
+interface Tool {
+  name: string;
+  description: string;
+  inputSchema: {
+    type: "object";
+    properties: Record<string, any>;
+  };
+}
+
+// 2. 实现工具逻辑 - 基于实际的 GitLab 工具
+const listProjectsTool: Tool = {
+  name: "list_projects",
+  description: "获取当前GitLab实例中所有可访问的项目列表",
+  inputSchema: {
+    type: "object",
+    properties: {}
+  }
+};
+
+const getProjectByNameTool: Tool = {
+  name: "get_project_by_name",
+  description: "通过项目名称或命名空间搜索GitLab项目",
+  inputSchema: {
+    type: "object",
+    properties: {
+      projectName: {
+        type: "string",
+        description: "项目名称或命名空间，如 'myproject' 或 'group/project'"
+      }
+    }
+  }
+};
+
+// 3. 注册到 MCP 服务器
+server.setRequestHandler("tools/list", async () => {
+  return {
+    tools: [listProjectsTool, getProjectByNameTool]
+  };
+});
+
+server.setRequestHandler("tools/call", async (request) => {
+  const { name, arguments: args } = request.params;
+
+  switch (name) {
+    case "list_projects":
+      const projects = await getGitLabProjects();
+      return {
+        content: [{ type: "text", text: formatProjectsList(projects) }]
+      };
+    case "get_project_by_name":
+      const project = await getProjectByName(args.projectName);
+      return {
+        content: [{ type: "text", text: project ? formatProjectInfo(project) : "项目未找到" }]
+      };
+  }
+});
+```
+
+### 传输层选择策略
+
+**Stdio 模式（推荐开发）**
+```typescript
+// 最简单的集成方式，适合本地开发和测试
+const transport = new StdioServerTransport();
+await server.connect(transport);
+```
+- ✅ **开发友好**：启动快，调试容易
+- ✅ **资源节省**：无网络开销
+- ❌ **部署限制**：只能本地使用
+
+**HTTP 模式（推荐生产）**
+```typescript
+// 支持远程访问，适合生产环境
+const transport = new StreamableHTTPServerTransport({
+  port: 3000,
+  endpoint: "/mcp"
+});
+await server.connect(transport);
+```
+- ✅ **远程访问**：支持网络调用
+- ✅ **扩展性好**：可水平扩展
+- ❌ **配置复杂**：需要网络配置
+
+## 🎨 MCP 开发最佳实践
+
+### MCP 项目结构建议
+
+```typescript
+// 基于实际 GitLab MCP 项目的结构
+src/
+├── index.ts              // 主入口文件
+├── http-server.ts        // HTTP 服务器（可选）
+├── mcp/
+│   └── register-tools.ts // 工具注册中心
+├── services/             // 业务逻辑层
+│   ├── index.ts          // 服务导出
+│   ├── gitlab.ts         // GitLab API 调用
+│   └── config.ts         // 配置服务
+├── types/                // 类型定义
+│   ├── index.ts          // 类型导出
+│   ├── gitlab.ts         // GitLab 相关类型
+│   └── config.ts         // 配置类型
+└── utils/                // 工具函数
+    ├── index.ts          // 工具导出
+    └── format.ts         // 格式化工具
+```
+
+### 开发流程规范
+
+**1️⃣ 工具设计阶段**
+```typescript
+// 先定义工具接口，确保设计合理
+interface GitLabTool {
+  name: "list_projects" | "get_project_by_name";
+  description: string;
+  inputSchema: {
+    type: "object";
+    properties: Record<string, any>;
+  };
+}
+```
+
+**2️⃣ 协议实现阶段**
+```typescript
+// 使用官方 SDK 实现协议
 server.registerTool(
   "list_projects",
   {
@@ -472,305 +677,107 @@ server.registerTool(
     inputSchema: {}
   },
   async () => {
-    // 工具实现逻辑
+    const projects = await getGitLabProjects();
     return {
-      content: [{ type: "text", text: "项目列表..." }]
+      content: [{ type: "text", text: formatProjectsList(projects) }]
     };
   }
 );
 ```
 
-**技术亮点：**
-- 使用官方 SDK 确保协议兼容性
-- 支持 Stdio 和 HTTP 双模式运行
-- 统一的工具注册和管理机制
-
-### 项目实际技术栈
-
-```json
-{
-  "实际技术栈": {
-    "语言": "TypeScript 5.3+",
-    "MCP SDK": "@modelcontextprotocol/sdk ^1.17.1",
-    "运行时": "Node.js 18+",
-    "构建工具": "TypeScript Compiler (tsc)",
-    "开发工具": "tsx + nodemon",
-    "配置管理": "zod ^3.23.8",
-    "网络请求": "axios ^1.6.0",
-    "Web框架": "express ^4.18.2",
-    "文档": "VitePress ^1.3.0",
-    "包管理": "yarn"
-  }
-}
+**3️⃣ 测试验证阶段**
+```typescript
+// 确保工具能正确响应
+const response = await callTool("list_projects", {});
+console.log(response); // 验证输出格式和数据结构
 ```
 
-**核心依赖说明：**
-- **@modelcontextprotocol/sdk**：官方MCP协议实现
-- **zod**：运行时类型验证和配置管理
-- **axios**：GitLab API调用的HTTP客户端
-- **tsx**：支持ESM和TypeScript的Node.js运行时
-
-## 🏛️ 分层架构设计
-
-### 清晰的分层职责划分
-
-```
-┌─────────────────┐
-│   入口层 (Entry)   │ ← 进程管理、传输协议
-├─────────────────┤
-│   MCP 层 (MCP)    │ ← 工具注册、协议转换
-├─────────────────┤
-│ 服务层 (Services) │ ← 业务逻辑、API调用
-├─────────────────┤
-│ 工具层 (Utils)    │ ← 纯函数、数据处理
-├─────────────────┤
-│ 类型层 (Types)    │ ← 类型定义、接口规范
-└─────────────────┘
-```
-
-### 依赖方向与设计原则
+### 常见错误处理模式
 
 ```typescript
-// 依赖方向：单向依赖，确保解耦
-入口层 → MCP层 → 服务层 → 工具层/类型层
-
-// 核心设计原则
-const principles = {
-  // 1. 单一职责
-  singleResponsibility: "每个模块只负责一个明确的功能",
-
-  // 2. 依赖倒置
-  dependencyInversion: "高层模块不依赖低层模块，通过抽象接口解耦",
-
-  // 3. 错误边界
-  errorBoundary: "统一的错误处理和用户友好的错误信息",
-
-  // 4. 配置中心化
-  configCentralization: "所有配置通过统一的服务管理"
-};
-```
-
-## 🔧 关键技术实现
-
-### 智能的错误处理系统
-
-```typescript
-// 错误分类与处理
+// 基于实际 GitLab 项目的错误处理
 enum GitLabErrorType {
-  NETWORK_ERROR = '网络错误',
+  NETWORK_ERROR = '网络连接错误',
   AUTH_ERROR = '认证失败',
   PERMISSION_ERROR = '权限不足',
   API_LIMIT_ERROR = 'API限流',
   NOT_FOUND_ERROR = '资源不存在'
 }
 
-// 统一的错误处理函数
-export function handleGitLabError(error: any): string {
-  // 错误分类 + 用户友好的提示信息
-  return generateErrorMessage(error);
-}
-```
-
-**错误处理策略：**
-- **分类处理**：不同类型的错误采用不同的处理策略
-- **用户友好**：错误信息面向最终用户而非开发者
-- **容错设计**：网络异常时提供重试和降级方案
-
-### HTTP 并发控制与性能优化
-
-```typescript
-// 并发控制配置
-const concurrencyConfig = {
-  maxConcurrent: parseInt(process.env.GITLAB_FETCH_CONCURRENCY || '5'),
-  timeout: 30000,
-  retryAttempts: 3
-};
-
-// 分页查询优化
-async function fetchProjectsWithPagination() {
-  const results = [];
-  let page = 1;
-  let hasNextPage = true;
-
-  while (hasNextPage) {
-    const response = await axios.get(`/projects?page=${page}&per_page=100`);
-    results.push(...response.data);
-
-    hasNextPage = response.headers['x-next-page'] !== '';
-    page++;
+function handleGitLabError(error: any): string {
+  // 错误分类处理
+  if (error.response?.status === 401) {
+    return "❌ 认证失败：请检查 GitLab Token 是否正确设置";
+  }
+  if (error.response?.status === 403) {
+    return "🚫 权限不足：你没有访问该资源的权限";
+  }
+  if (error.response?.status === 404) {
+    return "🔍 资源不存在：请检查项目名称或路径是否正确";
+  }
+  if (error.response?.status === 429) {
+    return "⏱️ API限流：请求过于频繁，请稍后再试";
   }
 
-  return results;
+  return `❌ 未知错误：${error.message}`;
 }
-```
 
-**性能优化点：**
-- **并发控制**：避免 API 限流和资源浪费
-- **分页处理**：高效处理大量数据
-- **缓存策略**：合理的缓存机制减少重复请求
-
-### 双模式运行架构
-
-```typescript
-// Stdio 模式 - 直接集成到 AI 工具
-const stdioServer = new StdioServerTransport();
-await server.connect(stdioServer);
-
-// HTTP 模式 - 独立服务部署
-const httpServer = express();
-httpServer.post('/mcp', async (req, res) => {
-  const result = await server.processRequest(req.body);
-  res.json(result);
+// 在工具中使用错误处理
+server.registerTool("list_projects", {...}, async () => {
+  try {
+    const projects = await getGitLabProjects();
+    return {
+      content: [{ type: "text", text: formatProjectsList(projects) }]
+    };
+  } catch (error) {
+    return {
+      content: [{ type: "text", text: handleGitLabError(error) }]
+    };
+  }
 });
 ```
 
-**架构优势：**
-- **灵活部署**：支持多种集成方式
-- **环境适配**：无缝对接不同运行环境
-- **扩展性强**：易于添加新的传输协议
+## 🚀 MCP 部署模式
 
-## 🎨 开发经验分享
+### 本地开发模式
 
-### 代码组织的最佳实践
+```bash
+# 1. 安装依赖
+yarn install
+
+# 2. 设置环境变量
+export GITLAB_TOKEN=your_gitlab_token
+export GITLAB_URL=https://gitlab.com
+
+# 3. 构建项目
+yarn build
+
+# 4. 启动 MCP 服务器
+yarn start
+
+# 5. 配置 AI 工具
+# 在 Cursor 或 Claude Desktop 中配置 MCP 服务器路径
+# 路径指向: /path/to/gitlab-mcp-server/dist/index.js
+```
+
+### 云端部署模式
 
 ```typescript
-// 统一的文件结构约定
-src/
-├── index.ts          // 主入口，职责单一
-├── http-server.ts    // HTTP服务，独立部署
-├── mcp/
-│   └── register-tools.ts  // 集中注册，统一管理
-├── services/         // 业务逻辑封装
-├── utils/           // 纯函数工具集
-└── types/           // 类型定义中心
+// HTTP 服务器模式部署
+import { Server } from "@modelcontextprotocol/sdk/server/index.js";
+import { SSEServerTransport } from "@modelcontextprotocol/sdk/server/sse.js";
+
+const server = new Server({...});
+const transport = new SSEServerTransport("/sse", response);
+await server.connect(transport);
 ```
 
-**经验总结：**
-- **文件职责明确**：每个文件都有单一的职责
-- **导入导出清晰**：通过 index.ts 统一导出
-- **命名规范统一**：遵循一致的命名约定
+### 部署平台推荐
 
-### 测试策略与质量保证
-
-```typescript
-// 分层测试策略
-const testingStrategy = {
-  unit: "纯函数单元测试",
-  integration: "API集成测试",
-  e2e: "端到端功能测试",
-  performance: "性能和并发测试"
-};
-
-// CI/CD 质量门禁
-const qualityGates = [
-  "TypeScript 类型检查",
-  "ESLint 代码规范检查",
-  "单元测试覆盖率 > 80%",
-  "构建和部署验证"
-];
-```
-
-### 配置管理的设计理念
-
-```typescript
-// 基于项目的实际配置代码
-import { z } from 'zod';
-
-// 配置验证schema
-const configSchema = z.object({
-  name: z.string().default('gitlab-mcp-server'),
-  version: z.string().default('1.0.0'),
-  gitlabUrl: z.string().url().default('https://gitlab.com'),
-  gitlabToken: z.string().min(1),
-  port: z.number().default(3000),
-  concurrency: z.number().min(1).max(10).default(5)
-});
-
-// 实际的配置获取函数
-export function getServerConfig() {
-  const config = {
-    name: process.env.MCP_SERVER_NAME || 'gitlab-mcp-server',
-    version: process.env.MCP_SERVER_VERSION || '1.0.0',
-    gitlabUrl: process.env.GITLAB_URL || 'https://gitlab.com',
-    gitlabToken: process.env.GITLAB_TOKEN,
-    port: parseInt(process.env.PORT || '3000'),
-    concurrency: parseInt(process.env.GITLAB_FETCH_CONCURRENCY || '5')
-  };
-
-  return configSchema.parse(config);
-}
-```
-
-## 🚀 部署与运维
-
-### 容器化部署方案
-
-```dockerfile
-# 示例 Dockerfile（可根据项目需求创建）
-FROM node:18-alpine
-WORKDIR /app
-
-# 复制package文件
-COPY package.json yarn.lock ./
-RUN yarn install --production
-
-# 复制构建产物
-COPY dist/ ./dist/
-
-# 暴露端口
-EXPOSE 3000
-
-# 启动命令
-CMD ["node", "dist/http-server.js"]
-```
-
-**注意**：当前项目暂未包含 Dockerfile，可根据部署需求自行创建。
-
-### 监控与日志策略
-
-```typescript
-// 结构化日志记录
-const logger = {
-  info: (message: string, meta?: any) => console.log(JSON.stringify({ level: 'info', message, ...meta })),
-  error: (message: string, error?: any) => console.error(JSON.stringify({ level: 'error', message, error })),
-  performance: (operation: string, duration: number) => console.log(JSON.stringify({ level: 'perf', operation, duration }))
-};
-```
-
-## 🔮 技术展望
-
-### 未来功能规划
-
-```typescript
-const roadmap = {
-  // 短期目标 (v2.0)
-  shortTerm: [
-    "支持更多 GitLab API 端点",
-    "添加缓存层提升性能",
-    "提供 Webhook 集成"
-  ],
-
-  // 中期目标 (v3.0)
-  midTerm: [
-    "支持多 GitLab 实例",
-    "添加项目分析和报告功能",
-    "提供图形化管理界面"
-  ],
-
-  // 长期目标 (v4.0)
-  longTerm: [
-    "AI 驱动的项目洞察",
-    "自动化代码审查助手",
-    "智能的项目推荐系统"
-  ]
-};
-```
-
-### 技术演进方向
-
-- **协议扩展**：支持更多 MCP 协议特性
-- **AI 集成**：深度集成 AI 编程助手的工作流
-- **生态建设**：构建完整的开发者工具生态
+- **Vercel**：快速部署 HTTP 模式的 MCP 服务器
+- **Railway**：支持持久运行的云服务
+- **Fly.io**：全球 CDN，适合低延迟需求
+- **自托管**：企业内网环境下的私有部署
 
 ## ☁️ MCP 托管平台
 
