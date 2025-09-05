@@ -438,6 +438,31 @@ Agent: 监控部署状态并报告结果
 
 ## 🎯 GitLab 项目演示
 
+### 🎯 gitlab-mcp-server 项目介绍
+
+本项目是一个完整的 **GitLab MCP 服务器** 实现，为 MCP 开发提供了最佳实践示例：
+
+**📍 项目地址**: `gitlab-mcp-server/`
+
+**🔧 核心功能**:
+- 🔍 **项目列表查询**：获取 GitLab 实例中的所有项目信息
+- 🌿 **分支搜索**：按分支名搜索项目，支持模糊匹配
+- 🧭 **项目详情**：通过项目名精确搜索项目信息
+- 🌐 **双传输模式**：支持 Stdio 和 HTTP 两种传输方式
+
+**🏗️ 技术架构**:
+```typescript
+// 项目结构层次
+gitlab-mcp-server/
+├── src/
+│   ├── index.ts              // Stdio 服务器入口
+│   ├── http-server.ts        // HTTP 服务器入口
+│   ├── mcp/register-tools.ts // 工具注册中心
+│   ├── services/gitlab.ts    // GitLab API 封装
+│   ├── types/gitlab.ts       // 类型定义
+│   └── utils/format.ts       // 数据格式化工具
+```
+
 ### 为什么选择 GitLab 作为演示案例？
 
 我们选择 GitLab 作为 MCP 开发的演示案例，因为：
@@ -447,44 +472,52 @@ Agent: 监控部署状态并报告结果
 - **🔒 权限管理**：展示了 MCP 在企业环境中的安全控制
 - **🚀 实用价值**：开发者日常工作中常用的工具
 
+
 ## 🏗️ MCP 开发技术栈
 
 ### MCP SDK 核心使用
 
+基于 `gitlab-mcp-server` 项目的实际实现：
+
 ```typescript
+// 基于实际项目的服务器创建代码 (src/index.ts)
+import { Server } from "@modelcontextprotocol/sdk/server/index.js";
+import { StdioServerTransport } from "@modelcontextprotocol/sdk/server/stdio.js";
+
 // 1. 创建 MCP 服务器实例
 const server = new Server(
   {
-    name: "gitlab-mcp-server",
-    version: "1.0.0",
+    name: "gitlab-mcp-server", // 项目名称
+    version: "1.0.0",          // 版本号
   },
   {
     capabilities: {
-      tools: {},
+      tools: {}, // 支持工具调用
     },
   }
 );
 
-// 2. 注册工具
-server.setRequestHandler("tools/call", async (request) => {
-  const { name, arguments: args } = request.params;
-
-  switch (name) {
-    case "list_projects":
-      // 调用 GitLab API 获取项目列表
-      const projects = await getGitLabProjects();
-      return {
-        content: [{ type: "text", text: formatProjectsList(projects) }]
-      };
-    case "get_project_by_name":
-      // 根据项目名搜索项目
-      const project = await getProjectByName(args.projectName);
-      return {
-        content: [{ type: "text", text: formatProjectInfo(project) }]
-      };
-    default:
-      throw new Error(`Unknown tool: ${name}`);
-  }
+// 2. 注册工具处理器 (实际代码在 src/mcp/register-tools.ts)
+server.setRequestHandler("tools/list", async () => {
+  return {
+    tools: [
+      {
+        name: "list_projects",
+        description: "获取当前GitLab实例中所有可访问的项目列表",
+        inputSchema: { type: "object", properties: {} }
+      },
+      {
+        name: "get_project_by_name",
+        description: "通过项目名称搜索GitLab项目",
+        inputSchema: {
+          type: "object",
+          properties: {
+            projectName: { type: "string", description: "项目名称" }
+          }
+        }
+      }
+    ]
+  };
 });
 
 // 3. 连接传输层
@@ -492,21 +525,38 @@ const transport = new StdioServerTransport();
 await server.connect(transport);
 ```
 
+**📁 实际项目文件对照**:
+- **服务器入口**: `src/index.ts` - Stdio 模式启动
+- **HTTP入口**: `src/http-server.ts` - HTTP 模式启动
+- **工具注册**: `src/mcp/register-tools.ts` - 统一注册所有工具
+- **业务逻辑**: `src/services/gitlab.ts` - GitLab API 封装
+
 ### MCP 开发必备工具
+
+基于 `gitlab-mcp-server` 项目的实际依赖配置：
 
 ```json
 {
   "核心依赖": {
-    "@modelcontextprotocol/sdk": "^1.17.1",
-    "zod": "^3.23.8"
+    "@modelcontextprotocol/sdk": "^1.17.1",  // MCP 官方 SDK
+    "zod": "^3.23.8",                        // 运行时类型验证
+    "axios": "^1.6.0"                        // HTTP 客户端（GitLab API调用）
+  },
+  "Web服务器": {
+    "express": "^4.18.2",                    // HTTP 模式服务器
+    "cors": "^2.8.5"                         // 跨域处理
   },
   "开发工具": {
-    "typescript": "^5.3.0",
-    "tsx": "^4.7.0"
+    "typescript": "^5.3.0",                  // 类型安全开发
+    "tsx": "^4.6.0",                         // TypeScript 执行器
+    "nodemon": "^3.0.1"                      // 开发热重载
+  },
+  "文档工具": {
+    "vitepress": "^1.3.0"                    // 项目文档
   },
   "传输层": {
-    "stdio": "内置支持",
-    "http": "可选扩展"
+    "stdio": "内置支持 (src/index.ts)",
+    "http": "Express实现 (src/http-server.ts)"
   }
 }
 ```
@@ -543,65 +593,66 @@ await server.connect(transport);
 
 ### 工具定义与注册
 
+基于 `gitlab-mcp-server` 项目的实际工具实现：
+
 ```typescript
-// 1. 定义工具接口
-interface Tool {
-  name: string;
-  description: string;
-  inputSchema: {
-    type: "object";
-    properties: Record<string, any>;
-  };
-}
+// 📁 src/mcp/register-tools.ts - 实际项目中的工具注册
+import { Server } from "@modelcontextprotocol/sdk/server/index.js";
+import { listProjects } from "../services/gitlab.js";
+import { formatProjectsList, formatProjectInfo } from "../utils/format.js";
 
-// 2. 实现工具逻辑 - 基于实际的 GitLab 工具
-const listProjectsTool: Tool = {
-  name: "list_projects",
-  description: "获取当前GitLab实例中所有可访问的项目列表",
-  inputSchema: {
-    type: "object",
-    properties: {}
-  }
-};
+export function registerTools(server: Server) {
+  // 1. 注册工具列表
+  server.setRequestHandler("tools/list", async () => {
+    return {
+      tools: [
+        {
+          name: "list_projects",
+          description: "获取当前GitLab实例中所有可访问的项目列表",
+          inputSchema: { type: "object", properties: {} }
+        },
+        {
+          name: "get_project_by_name",
+          description: "通过项目名称搜索GitLab项目",
+          inputSchema: {
+            type: "object",
+            properties: {
+              projectName: { type: "string", description: "项目名称" }
+            }
+          }
+        }
+      ]
+    };
+  });
 
-const getProjectByNameTool: Tool = {
-  name: "get_project_by_name",
-  description: "通过项目名称或命名空间搜索GitLab项目",
-  inputSchema: {
-    type: "object",
-    properties: {
-      projectName: {
-        type: "string",
-        description: "项目名称或命名空间，如 'myproject' 或 'group/project'"
-      }
+  // 2. 注册工具调用处理器
+  server.setRequestHandler("tools/call", async (request) => {
+    const { name, arguments: args } = request.params;
+
+    switch (name) {
+      case "list_projects":
+        const projects = await listProjects();
+        return {
+          content: [{ type: "text", text: formatProjectsList(projects) }]
+        };
+
+      case "get_project_by_name":
+        const project = await getProjectByName(args.projectName);
+        return {
+          content: [{ type: "text", text: project ? formatProjectInfo(project) : "项目未找到" }]
+        };
+
+      default:
+        throw new Error(`未知工具: ${name}`);
     }
-  }
-};
-
-// 3. 注册到 MCP 服务器
-server.setRequestHandler("tools/list", async () => {
-  return {
-    tools: [listProjectsTool, getProjectByNameTool]
-  };
-});
-
-server.setRequestHandler("tools/call", async (request) => {
-  const { name, arguments: args } = request.params;
-
-  switch (name) {
-    case "list_projects":
-      const projects = await getGitLabProjects();
-      return {
-        content: [{ type: "text", text: formatProjectsList(projects) }]
-      };
-    case "get_project_by_name":
-      const project = await getProjectByName(args.projectName);
-      return {
-        content: [{ type: "text", text: project ? formatProjectInfo(project) : "项目未找到" }]
-      };
-  }
-});
+  });
+}
 ```
+
+**📁 相关文件对照**:
+- **工具注册**: `src/mcp/register-tools.ts` - 统一注册所有工具
+- **业务逻辑**: `src/services/gitlab.ts` - GitLab API 调用
+- **格式化工具**: `src/utils/format.ts` - 响应数据格式化
 
 ### 传输层选择策略
 
@@ -632,25 +683,33 @@ await server.connect(transport);
 
 ### MCP 项目结构建议
 
+基于 `gitlab-mcp-server` 项目的实际结构设计：
+
 ```typescript
-// 基于实际 GitLab MCP 项目的结构
+// 📁 实际项目结构 (src/)
 src/
-├── index.ts              // 主入口文件
-├── http-server.ts        // HTTP 服务器（可选）
+├── index.ts                    // Stdio 服务器主入口
+├── http-server.ts              // HTTP 服务器主入口
 ├── mcp/
-│   └── register-tools.ts // 工具注册中心
-├── services/             // 业务逻辑层
-│   ├── index.ts          // 服务导出
-│   ├── gitlab.ts         // GitLab API 调用
-│   └── config.ts         // 配置服务
-├── types/                // 类型定义
-│   ├── index.ts          // 类型导出
-│   ├── gitlab.ts         // GitLab 相关类型
-│   └── config.ts         // 配置类型
-└── utils/                // 工具函数
-    ├── index.ts          // 工具导出
-    └── format.ts         // 格式化工具
+│   └── register-tools.ts       // 🛠️ 统一工具注册中心
+├── services/                   // 🔧 业务逻辑层
+│   ├── index.ts                // 服务模块导出
+│   ├── gitlab.ts               // GitLab API 封装与错误处理
+│   └── config.ts               // 运行时配置管理
+├── types/                      // 📋 类型定义
+│   ├── index.ts                // 类型模块导出
+│   ├── gitlab.ts               // GitLab API 相关类型
+│   └── config.ts               // 配置相关类型
+└── utils/                      // 🧰 工具函数
+    ├── index.ts                // 工具模块导出
+    └── format.ts               // 文本格式化纯函数
 ```
+
+**🏗️ 架构设计原则**:
+- **services/**：存放所有请求和副作用逻辑（遵循单一职责）
+- **utils/**：存放纯函数和数据处理逻辑（无副作用，可测试）
+- **types/**：集中管理所有TypeScript类型定义
+- **mcp/**：MCP协议相关的核心逻辑
 
 ### 开发流程规范
 
@@ -742,137 +801,179 @@ server.registerTool("list_projects", {...}, async () => {
 
 ### 本地开发模式
 
+基于 `gitlab-mcp-server` 项目的实际部署步骤：
+
 ```bash
 # 1. 安装依赖
 yarn install
 
-# 2. 设置环境变量
-export GITLAB_TOKEN=your_gitlab_token
-export GITLAB_URL=https://gitlab.com
+# 2. 设置环境变量 (至少需要 GITLAB_TOKEN)
+export GITLAB_TOKEN=glpat_xxx  # GitLab Personal Access Token
+export GITLAB_URL=https://gitlab.com  # GitLab 实例地址
+export PORT=3000  # HTTP 模式端口（可选）
 
-# 3. 构建项目
+# 3. 开发模式启动
+# Stdio 模式（推荐）
+yarn dev
+
+# 或 HTTP 模式
+yarn http:dev
+
+# 4. 生产模式部署
+yarn build && yarn start  # Stdio 模式
+yarn build && yarn http   # HTTP 模式
+```
+
+**🔧 配置说明**:
+- **GITLAB_TOKEN**: 必需，具有 `read_api` 权限的 Personal Access Token
+- **GITLAB_URL**: GitLab 实例地址，默认 `https://gitlab.com`
+- **PORT**: HTTP 模式监听端口，默认 `3000`
+
+**📋 Claude Desktop 配置示例**:
+
+在 Claude Desktop 的配置文件中添加以下任一配置：
+
+```json
+{
+  "mcpServers": {
+    // 方式1：使用编译后的文件（推荐生产环境）
+    "gitlab-node": {
+      "command": "node",
+      "args": ["/path/to/gitlab-mcp-server/dist/index.js"],
+      "env": {
+        "GITLAB_URL": "https://your-gitlab-instance.com",
+        "GITLAB_TOKEN": "your-gitlab-token-here"
+      }
+    },
+
+    // 方式2：使用 tsx 直接运行源码（适合开发调试）
+    "gitlab-tsx": {
+      "command": "npx",
+      "args": ["tsx", "/path/to/gitlab-mcp-server/src/index.ts"],
+      "env": {
+        "GITLAB_URL": "https://your-gitlab-instance.com",
+        "GITLAB_TOKEN": "your-gitlab-token-here"
+      }
+    },
+
+    // 方式3：HTTP 模式（支持远程部署）
+    "gitlab-http": {
+      "transport": "http",
+      "url": "http://localhost:3000/mcp",
+      "env": {
+        "GITLAB_URL": "https://your-gitlab-instance.com",
+        "GITLAB_TOKEN": "your-gitlab-token-here"
+      }
+    }
+  }
+}
+```
+
+**🔄 配置说明**:
+- **方式1**: 最稳定，适合生产环境，需要先运行 `yarn build`
+- **方式2**: 开发友好，支持热重载，无需编译
+- **方式3**: 支持远程访问，需要先启动 HTTP 服务器 `yarn http:dev`
+
+**💡 快速配置步骤**:
+1. **获取 GitLab Token**: 登录 GitLab → Settings → Access Tokens → 创建具有 `read_api` 权限的 token
+2. **复制配置文件**: 根据使用的 AI 工具编辑相应的配置文件
+3. **替换路径和凭据**: 将 `/path/to/gitlab-mcp-server` 替换为实际项目路径
+4. **重启 AI 工具**: 配置完成后重启 Claude Desktop 或 Cursor 以生效
+
+**📝 配置文件位置**:
+- **Claude Desktop**: `~/Library/Application Support/Claude/claude_desktop_config.json`
+- **Cursor**: `.cursorrules` 或项目级的 `.cursor/mcp.json`
+
+**🖥️ Cursor 配置示例**:
+
+在项目根目录创建 `.cursor/mcp.json` 文件：
+
+```json
+{
+  "mcpServers": {
+    "gitlab": {
+      "command": "npx",
+      "args": ["tsx", "src/index.ts"],
+      "env": {
+        "GITLAB_URL": "https://your-gitlab-instance.com",
+        "GITLAB_TOKEN": "your-gitlab-token-here"
+      }
+    }
+  }
+}
+```
+
+或者在 `.cursorrules` 文件中添加：
+
+```json
+{
+  "mcp": {
+    "gitlab": {
+      "command": "npx",
+      "args": ["tsx", "src/index.ts"],
+      "env": {
+        "GITLAB_URL": "https://your-gitlab-instance.com",
+        "GITLAB_TOKEN": "your-gitlab-token-here"
+      }
+    }
+  }
+}
+```
+
+**🧪 配置验证**:
+
+配置完成后，可以通过以下方式验证 MCP 服务器是否正常工作：
+
+1. **重启 AI 工具**：Claude Desktop 或 Cursor
+2. **测试工具调用**：在对话中询问 "帮我查看 GitLab 项目列表"
+3. **检查错误日志**：如果连接失败，检查控制台错误信息
+
+### 自托管部署（推荐）
+
+既然你们有自己的云服务器，**自托管是最佳选择**！
+
+**🚀 部署到你的云服务器：**
+
+```bash
+# 1. 上传项目到服务器
+scp -r gitlab-mcp-server user@your-server:/path/to/
+
+# 2. 在服务器上安装依赖
+cd /path/to/gitlab-mcp-server
+yarn install
+
+# 3. 配置环境变量
+export GITLAB_TOKEN=your_gitlab_token
+export GITLAB_URL=https://your-gitlab-instance.com
+export PORT=3000
+
+# 4. 构建项目
 yarn build
 
-# 4. 启动 MCP 服务器
-yarn start
-
-# 5. 配置 AI 工具
-# 在 Cursor 或 Claude Desktop 中配置 MCP 服务器路径
-# 路径指向: /path/to/gitlab-mcp-server/dist/index.js
+# 5. 启动服务（选择一种方式）
+yarn http    # HTTP 模式，适合远程访问
+yarn start   # Stdio 模式，适合本地集成
 ```
 
-### 云端部署模式
-
-```typescript
-// HTTP 服务器模式部署
-import { Server } from "@modelcontextprotocol/sdk/server/index.js";
-import { SSEServerTransport } from "@modelcontextprotocol/sdk/server/sse.js";
-
-const server = new Server({...});
-const transport = new SSEServerTransport("/sse", response);
-await server.connect(transport);
-```
-
-### 部署平台推荐
-
-- **Vercel**：快速部署 HTTP 模式的 MCP 服务器
-- **Railway**：支持持久运行的云服务
-- **Fly.io**：全球 CDN，适合低延迟需求
-- **自托管**：企业内网环境下的私有部署
-
-## ☁️ MCP 托管平台
-
-### 常见的 MCP 托管平台
-
-#### 1. **Vercel** - 前端云平台（推荐新手）
+**🔧 使用 PM2 管理进程（生产环境推荐）：**
 ```bash
-# 安装 Vercel CLI
-npm i -g vercel
+# 安装 PM2
+npm install -g pm2
 
-# 部署到 Vercel
-vercel --prod
+# 启动服务
+pm2 start yarn --name "gitlab-mcp" -- http
 
-# 配置环境变量
-vercel env add GITLAB_TOKEN
-vercel env add GITLAB_URL
+# 设置开机自启
+pm2 startup
+pm2 save
+
+# 查看状态
+pm2 status
+pm2 logs gitlab-mcp
 ```
 
-**优点：**
-- ✅ 免费额度充足（每月 100GB 流量）
-- ✅ 自动HTTPS和全球CDN
-- ✅ Git集成，自动部署
-- ✅ 支持Node.js原生
-
-#### 2. **Railway** - 现代化应用平台
-```bash
-# Railway CLI 安装
-npm install -g @railway/cli
-
-# 登录并部署
-railway login
-railway init
-railway up
-```
-
-**优点：**
-- ✅ 自动检测项目类型
-- ✅ 内置数据库支持
-- ✅ 简单的环境变量管理
-- ✅ 按使用量计费，性价比高
-
-#### 3. **Render** - 云应用平台
-```yaml
-# render.yaml
-services:
-  - type: web
-    name: gitlab-mcp-server
-    runtime: node
-    buildCommand: yarn build
-    startCommand: yarn start:http
-    envVars:
-      - key: GITLAB_TOKEN
-        value: your-token
-      - key: GITLAB_URL
-        value: https://gitlab.com
-```
-
-**优点：**
-- ✅ 750小时/月的免费额度
-- ✅ 支持Docker和原生部署
-- ✅ 自动SSL证书
-- ✅ 简单的Web界面管理
-
-#### 4. **Fly.io** - 边缘计算平台
-```toml
-# fly.toml
-app = "gitlab-mcp-server"
-
-[build]
-  builder = "paketobuildpacks/builder:base"
-  buildpacks = ["gcr.io/paketo-buildpacks/nodejs"]
-
-[http_service]
-  internal_port = 3000
-  force_https = true
-```
-
-```bash
-# 部署命令
-fly launch
-fly deploy
-```
-
-**优点：**
-- ✅ 全球160个数据中心
-- ✅ 低延迟访问
-- ✅ Docker原生支持
-- ✅ 按实际使用计费
-
-### Docker 容器化部署
-
-#### 通用 Docker 部署
+**🐳 Docker 容器化部署：**
 ```dockerfile
-# Dockerfile
 FROM node:18-alpine
 WORKDIR /app
 COPY package*.json ./
@@ -880,73 +981,27 @@ RUN yarn install --production
 COPY . .
 RUN yarn build
 EXPOSE 3000
-CMD ["yarn", "start:http"]
+CMD ["yarn", "http"]
 ```
 
-**支持 Docker 的平台：**
-- **Railway** - 自动检测
-- **Render** - 支持Dockerfile
-- **Fly.io** - 原生Docker支持
-- **Google Cloud Run** - 容器即服务
-- **AWS ECS/Fargate** - 容器编排
+```bash
+# 构建镜像
+docker build -t gitlab-mcp-server .
 
-### 企业级部署选项
-
-#### AWS Lambda + API Gateway
-```yaml
-# serverless.yml 示例
-service: gitlab-mcp-server
-
-provider:
-  name: aws
-  runtime: nodejs18.x
-  environment:
-    GITLAB_TOKEN: ${env:GITLAB_TOKEN}
-    GITLAB_URL: ${env:GITLAB_URL}
-
-functions:
-  mcpHandler:
-    handler: dist/http-server.serverlessHandler
-    events:
-      - http:
-          path: /mcp
-          method: post
-          cors: true
+# 运行容器
+docker run -d \
+  --name gitlab-mcp \
+  -p 3000:3000 \
+  -e GITLAB_TOKEN=your_token \
+  -e GITLAB_URL=https://your-gitlab.com \
+  gitlab-mcp-server
 ```
 
-```typescript
-// http-server.ts 中的 serverless 导出
-export const serverlessHandler = async (event, context) => {
-  // 处理 Lambda 事件
-  return {
-    statusCode: 200,
-    body: JSON.stringify({ message: "MCP response" })
-  };
-};
-```
-
-### 托管平台对比
-
-| 平台 | 免费额度 | 部署复杂度 | 扩展性 | 推荐指数 |
-|------|---------|-----------|--------|---------|
-| **Vercel** | ⭐⭐⭐⭐⭐ | ⭐⭐ | ⭐⭐⭐ | ⭐⭐⭐⭐⭐ |
-| **Railway** | ⭐⭐⭐⭐ | ⭐⭐ | ⭐⭐⭐ | ⭐⭐⭐⭐⭐ |
-| **Render** | ⭐⭐⭐⭐⭐ | ⭐⭐ | ⭐⭐⭐ | ⭐⭐⭐⭐⭐ |
-| **Fly.io** | ⭐⭐⭐ | ⭐⭐⭐ | ⭐⭐⭐⭐⭐ | ⭐⭐⭐⭐ |
-| **AWS** | ⭐⭐ | ⭐⭐⭐⭐ | ⭐⭐⭐⭐⭐ | ⭐⭐⭐⭐ |
-
-### 选择建议
-
-**个人开发者/小型项目：**
-- 🚀 **Vercel** - 简单快速，免费额度充足
-- 🎯 **Railway** - 现代化，自动检测项目
-
-**团队/企业应用：**
-- 🏢 **Render** - 稳定的免费层级
-- 🌍 **Fly.io** - 全球化的低延迟服务
-
-**生产环境：**
-- ☁️ **AWS/GCP/Azure** - 企业级功能和支持
+**💡 自托管的优势：**
+- 🚀 **完全控制**：自定义配置和安全策略
+- ⚡ **最低延迟**：内网访问，无网络开销
+- 🔒 **数据安全**：敏感数据留在你的服务器
+- 📊 **资源优化**：根据实际需求配置资源
 
 ## 💡 总结与启发
 
