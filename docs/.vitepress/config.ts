@@ -7,6 +7,13 @@ export default defineConfig({
   base: '/', // GitHub Pages部署到根路径
   cleanUrls: true,
   lastUpdated: true,
+
+  vite: {
+    server: {
+      host: '0.0.0.0', // 支持本地IP访问
+      port: 4173
+    }
+  },
   themeConfig: {
 
     nav: [

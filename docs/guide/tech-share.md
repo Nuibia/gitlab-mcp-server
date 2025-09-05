@@ -80,6 +80,39 @@ const aiAssistantWithMCP = {
 - **⚡ 效率提升**：AI 可以直接帮你完成很多重复性工作
 - **🔧 易扩展**：可以轻松添加新的工具和功能
 
+### MCP 的传输方式
+
+**MCP 官方支持的传输协议：**
+
+#### 1. **Stdio 模式** - 标准输入输出
+```typescript
+// 最简单的集成方式，适合本地工具
+const transport = new StdioServerTransport();
+await server.connect(transport);
+```
+- ✅ **优点**：简单、无依赖、本地安全
+- ❌ **缺点**：仅支持本地、无法远程访问
+- 🎯 **适用场景**：桌面应用、命令行工具
+
+#### 2. **Streamable HTTP 模式** - 可流式HTTP
+```typescript
+// 支持远程访问的现代化HTTP传输
+const transport = new StreamableHTTPServerTransport();
+await server.connect(transport);
+```
+- ✅ **优点**：支持远程访问、会话管理、现代HTTP特性
+- ✅ **缺点**：需要服务器部署
+- 🎯 **适用场景**：Web服务、远程工具、云部署
+
+#### 3. **SSE 模式** - 服务器发送事件（已废弃）
+```typescript
+// 兼容性传输，已被Streamable HTTP替代
+const transport = new SSEServerTransport('/messages', res);
+await server.connect(transport);
+```
+- ⚠️ **状态**：已废弃，建议迁移到Streamable HTTP
+- 📋 **用途**：向后兼容旧版本客户端
+
 ### MCP 与其他 Agent 协议的区别
 
 **❌ 澄清一个误区：不是所有 Agent 都通过 MCP 实现**
@@ -689,6 +722,159 @@ const roadmap = {
 - **协议扩展**：支持更多 MCP 协议特性
 - **AI 集成**：深度集成 AI 编程助手的工作流
 - **生态建设**：构建完整的开发者工具生态
+
+## ☁️ MCP 托管平台
+
+### 常见的 MCP 托管平台
+
+#### 1. **Vercel** - 前端云平台（推荐新手）
+```bash
+# 安装 Vercel CLI
+npm i -g vercel
+
+# 部署到 Vercel
+vercel --prod
+
+# 配置环境变量
+vercel env add GITLAB_TOKEN
+vercel env add GITLAB_URL
+```
+
+**优点：**
+- ✅ 免费额度充足（每月 100GB 流量）
+- ✅ 自动HTTPS和全球CDN
+- ✅ Git集成，自动部署
+- ✅ 支持Node.js原生
+
+#### 2. **Railway** - 现代化应用平台
+```bash
+# Railway CLI 安装
+npm install -g @railway/cli
+
+# 登录并部署
+railway login
+railway init
+railway up
+```
+
+**优点：**
+- ✅ 自动检测项目类型
+- ✅ 内置数据库支持
+- ✅ 简单的环境变量管理
+- ✅ 按使用量计费，性价比高
+
+#### 3. **Render** - 云应用平台
+```yaml
+# render.yaml
+services:
+  - type: web
+    name: gitlab-mcp-server
+    runtime: node
+    buildCommand: yarn build
+    startCommand: yarn start:http
+    envVars:
+      - key: GITLAB_TOKEN
+        value: your-token
+      - key: GITLAB_URL
+        value: https://gitlab.com
+```
+
+**优点：**
+- ✅ 750小时/月的免费额度
+- ✅ 支持Docker和原生部署
+- ✅ 自动SSL证书
+- ✅ 简单的Web界面管理
+
+#### 4. **Fly.io** - 边缘计算平台
+```toml
+# fly.toml
+app = "gitlab-mcp-server"
+
+[build]
+  builder = "paketobuildpacks/builder:base"
+  buildpacks = ["gcr.io/paketo-buildpacks/nodejs"]
+
+[http_service]
+  internal_port = 3000
+  force_https = true
+```
+
+```bash
+# 部署命令
+fly launch
+fly deploy
+```
+
+**优点：**
+- ✅ 全球160个数据中心
+- ✅ 低延迟访问
+- ✅ Docker原生支持
+- ✅ 按实际使用计费
+
+### Docker 容器化部署
+
+#### 通用 Docker 部署
+```dockerfile
+# Dockerfile
+FROM node:18-alpine
+WORKDIR /app
+COPY package*.json ./
+RUN yarn install --production
+COPY . .
+RUN yarn build
+EXPOSE 3000
+CMD ["yarn", "start:http"]
+```
+
+**支持 Docker 的平台：**
+- **Railway** - 自动检测
+- **Render** - 支持Dockerfile
+- **Fly.io** - 原生Docker支持
+- **Google Cloud Run** - 容器即服务
+- **AWS ECS/Fargate** - 容器编排
+
+### 企业级部署选项
+
+#### AWS Lambda + API Gateway
+```typescript
+// serverless.yml
+service: gitlab-mcp-server
+
+provider:
+  name: aws
+  runtime: nodejs18.x
+
+functions:
+  mcp:
+    handler: dist/index.handler
+    events:
+      - http:
+          path: /mcp
+          method: post
+```
+
+### 托管平台对比
+
+| 平台 | 免费额度 | 部署复杂度 | 扩展性 | 推荐指数 |
+|------|---------|-----------|--------|---------|
+| **Vercel** | ⭐⭐⭐⭐⭐ | ⭐⭐ | ⭐⭐⭐ | ⭐⭐⭐⭐⭐ |
+| **Railway** | ⭐⭐⭐⭐ | ⭐⭐ | ⭐⭐⭐ | ⭐⭐⭐⭐⭐ |
+| **Render** | ⭐⭐⭐⭐⭐ | ⭐⭐ | ⭐⭐⭐ | ⭐⭐⭐⭐⭐ |
+| **Fly.io** | ⭐⭐⭐ | ⭐⭐⭐ | ⭐⭐⭐⭐⭐ | ⭐⭐⭐⭐ |
+| **AWS** | ⭐⭐ | ⭐⭐⭐⭐ | ⭐⭐⭐⭐⭐ | ⭐⭐⭐⭐ |
+
+### 选择建议
+
+**个人开发者/小型项目：**
+- 🚀 **Vercel** - 简单快速，免费额度充足
+- 🎯 **Railway** - 现代化，自动检测项目
+
+**团队/企业应用：**
+- 🏢 **Render** - 稳定的免费层级
+- 🌍 **Fly.io** - 全球化的低延迟服务
+
+**生产环境：**
+- ☁️ **AWS/GCP/Azure** - 企业级功能和支持
 
 ## 💡 总结与启发
 

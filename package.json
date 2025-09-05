@@ -12,7 +12,7 @@
     "dev": "tsx src/index.ts",
     "http": "tsx src/http-server.ts",
     "http:dev": "nodemon --exec tsx src/http-server.ts",
-    "docs:dev": "vitepress dev docs",
+    "docs:dev": "vitepress dev docs --host 0.0.0.0",
     "docs:build": "vitepress build docs",
     "docs:preview": "vitepress preview docs",
     "typecheck": "tsc --noEmit",
