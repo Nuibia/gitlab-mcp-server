@@ -142,13 +142,11 @@ app.all('/mcp', async (req, res) => {
       // 设置当前处理的session ID
       setCurrentProcessingSession(sessionId);
 
-      // 对于工具调用请求，检查是否有运行时配置
-      if (req.body?.method === 'tools/call') {
-        const runtimeConfig = injectRuntimeConfig(req);
-        if (runtimeConfig) {
-          // 使用新的配置管理器设置运行时配置
-          configManager.setRuntimeConfig(sessionId, runtimeConfig);
-        }
+      // 检查是否有运行时配置需要注入
+      const runtimeConfig = injectRuntimeConfig(req);
+      if (runtimeConfig) {
+        // 使用新的配置管理器设置运行时配置
+        configManager.setRuntimeConfig(sessionId, runtimeConfig);
       }
 
     } else {
