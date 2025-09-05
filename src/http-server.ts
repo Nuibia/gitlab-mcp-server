@@ -4,14 +4,14 @@ import { isInitializeRequest } from "@modelcontextprotocol/sdk/types.js";
 import cors from "cors";
 import express from "express";
 import { registerGitLabTools } from "./mcp/register-tools.js";
-import { getConfig, getServerConfig } from "./services/config.js";
+import { configManager, getServerConfig } from "./services/config.js";
 import { checkGitLabToken } from "./services/index.js";
 
 // 注意：GitLab配置将在运行时通过Cursor客户端注入，无需启动时强制检查
 checkGitLabToken(false);
 
 // 获取配置
-const config = getConfig();
+const config = configManager.getConfig();
 const serverConfig = getServerConfig();
 
 // 创建Express应用
@@ -61,44 +61,27 @@ function clearCurrentProcessingSession() {
 
 // 运行时配置注入函数 - 每次请求都检查配置
 function injectRuntimeConfig(req: any): { gitlabUrl: string; gitlabToken: string } | null {
-  let gitlabUrl: string | undefined;
-  let gitlabToken: string | undefined;
-
-  // 方式1：从MCP扩展参数获取（优先级最高）
-  if (req.body?.params?._gitlabConfig) {
-    const config = req.body.params._gitlabConfig;
-    gitlabUrl = config.gitlabUrl;
-    gitlabToken = config.gitlabToken;
-  }
-
-  // 方式2：从HTTP请求头获取
-  if (!gitlabUrl || !gitlabToken) {
-    const headerUrl = req.headers['x-gitlab-url'] as string;
-    const headerToken = req.headers['x-gitlab-token'] as string;
-
-    if (headerUrl && headerToken) {
-      gitlabUrl = headerUrl;
-      gitlabToken = headerToken;
+  // 按优先级顺序获取配置：MCP扩展参数 > HTTP头 > 查询参数
+  const configSources = [
+    // 方式1：从MCP扩展参数获取（优先级最高）
+    req.body?.params?._gitlabConfig && {
+      gitlabUrl: req.body.params._gitlabConfig.gitlabUrl,
+      gitlabToken: req.body.params._gitlabConfig.gitlabToken
+    },
+    // 方式2：从HTTP请求头获取
+    req.headers['x-gitlab-url'] && req.headers['x-gitlab-token'] && {
+      gitlabUrl: req.headers['x-gitlab-url'] as string,
+      gitlabToken: req.headers['x-gitlab-token'] as string
+    },
+    // 方式3：从查询参数获取
+    req.query?.gitlabUrl && req.query?.gitlabToken && {
+      gitlabUrl: req.query.gitlabUrl as string,
+      gitlabToken: req.query.gitlabToken as string
     }
-  }
+  ];
 
-  // 方式3：从查询参数获取
-  if (!gitlabUrl || !gitlabToken) {
-    const queryUrl = req.query?.gitlabUrl as string;
-    const queryToken = req.query?.gitlabToken as string;
-
-    if (queryUrl && queryToken) {
-      gitlabUrl = queryUrl;
-      gitlabToken = queryToken;
-    }
-  }
-
-  // 如果获取到完整配置，返回它
-  if (gitlabUrl && gitlabToken) {
-    return { gitlabUrl, gitlabToken };
-  }
-
-  return null;
+  // 返回第一个有效的配置
+  return configSources.find(config => config && config.gitlabUrl && config.gitlabToken) || null;
 }
 
 // 创建新的MCP服务器实例和transport
@@ -109,8 +92,8 @@ function createServerInstance(sessionId: string) {
     version: serverConfig.version
   });
 
-  // 注册工具
-  registerGitLabTools(server);
+  // 注册工具（传递sessionId以支持运行时配置）
+  registerGitLabTools(server, sessionId);
 
   // 创建transport
   const transport = new StreamableHTTPServerTransport({
@@ -163,12 +146,8 @@ app.all('/mcp', async (req, res) => {
       if (req.body?.method === 'tools/call') {
         const runtimeConfig = injectRuntimeConfig(req);
         if (runtimeConfig) {
-          // 将配置存储到session对应的存储中
-          runtimeConfigStore.set(sessionId, runtimeConfig);
-
-          // 同时设置环境变量，供服务层使用
-          process.env.RUNTIME_GITLAB_URL = runtimeConfig.gitlabUrl;
-          process.env.RUNTIME_GITLAB_TOKEN = runtimeConfig.gitlabToken;
+          // 使用新的配置管理器设置运行时配置
+          configManager.setRuntimeConfig(sessionId, runtimeConfig);
         }
       }
 
@@ -211,20 +190,26 @@ app.all('/mcp', async (req, res) => {
 // 健康检查端点
 app.get('/health', (req, res) => {
   // 重新获取最新配置（支持动态更新）
-  const currentConfig = getConfig();
+  const currentConfig = configManager.getConfig();
+  const configInfo = configManager.getConfigInfo();
+
   res.json({
     status: 'ok',
     timestamp: new Date().toISOString(),
     gitlabUrl: currentConfig.gitlabUrl || "未配置 (请通过Cursor客户端注入)",
     hasToken: !!currentConfig.gitlabToken,
-    ready: !!(currentConfig.gitlabUrl && currentConfig.gitlabToken)
+    ready: !!(currentConfig.gitlabUrl && currentConfig.gitlabToken),
+    configSource: configInfo.source,
+    sessionId: configInfo.sessionId
   });
 });
 
 // 根路径
 app.get('/', (req, res) => {
   // 重新获取最新配置
-  const currentConfig = getConfig();
+  const currentConfig = configManager.getConfig();
+  const configInfo = configManager.getConfigInfo();
+
   res.json({
     name: serverConfig.name,
     version: serverConfig.version,
@@ -232,7 +217,8 @@ app.get('/', (req, res) => {
     config: {
       gitlabUrl: currentConfig.gitlabUrl || "未配置",
       hasToken: !!currentConfig.gitlabToken,
-      ready: !!(currentConfig.gitlabUrl && currentConfig.gitlabToken)
+      ready: !!(currentConfig.gitlabUrl && currentConfig.gitlabToken),
+      source: configInfo.source
     },
     endpoints: {
       health: '/health',

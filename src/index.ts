@@ -2,10 +2,6 @@ import { McpServer } from "@modelcontextprotocol/sdk/server/mcp.js";
 import { StdioServerTransport } from "@modelcontextprotocol/sdk/server/stdio.js";
 import { registerGitLabTools } from "./mcp/register-tools.js";
 import { getServerConfig } from "./services/config.js";
-import { checkGitLabToken } from "./services/index.js";
-
-// 检查GitLab token
-checkGitLabToken();
 
 // 获取服务器配置
 const serverConfig = getServerConfig();

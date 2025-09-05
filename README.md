@@ -99,11 +99,20 @@ yarn build && yarn http
 
 ## 已注册工具
 
-- `list_projects`: 获取GitLab项目列表
-- `list_projects_with_branch`: 按分支名搜索项目
-  - 参数：`{ branchName: string }`
-- `get_project_by_name`: 按项目名搜索项目
-  - 参数：`{ projectName: string }`
+### list_projects
+获取当前GitLab实例中所有可访问的项目列表。返回项目的完整信息：项目名称、命名空间、描述、可见性、默认分支、统计信息（星标数、Fork数）以及最后更新时间。项目按更新时间倒序排列，最多返回100个项目。
+
+**参数**: 无
+
+### list_projects_with_branch
+搜索包含指定分支名的GitLab项目。不区分大小写，支持模糊匹配。返回匹配的项目及其分支详细信息，包括分支状态（默认分支/保护分支/活跃分支/已合并）、最新提交信息（提交SHA、提交标题、作者、时间）等。
+
+**参数**: `{ branchName: string }` - 要搜索的分支名，支持模糊匹配
+
+### get_project_by_name
+通过项目名称或命名空间搜索GitLab项目。支持精确匹配和模糊搜索。返回匹配的项目详细信息，包括项目URL、创建时间、统计信息等。如果未找到匹配项目，会提供搜索建议。
+
+**参数**: `{ projectName: string }` - 项目名称或命名空间，支持精确和模糊匹配
 
 ## 📖 用户指南
 

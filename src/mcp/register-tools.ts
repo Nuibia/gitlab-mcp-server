@@ -11,8 +11,30 @@ import {
   generateProjectsWithBranchesListText
 } from "../utils/index.js";
 
+// 导入错误类型
+
+/**
+ * 统一的工具执行包装器
+ */
+function createToolHandler<T extends any[]>(
+  handler: (...args: T) => Promise<string>
+) {
+  return async (...args: T) => {
+    try {
+      const result = await handler(...args);
+      return {
+        content: [{ type: "text" as const, text: result }]
+      };
+    } catch (error) {
+      return {
+        content: [{ type: "text" as const, text: handleGitLabError(error) }]
+      };
+    }
+  };
+}
+
 // 统一注册GitLab相关工具
-export function registerGitLabTools(server: McpServer): void {
+export function registerGitLabTools(server: McpServer, sessionId?: string): void {
   // 1) 获取所有项目
   server.registerTool(
     "list_projects",
@@ -21,18 +43,10 @@ export function registerGitLabTools(server: McpServer): void {
       description: "获取当前GitLab实例中所有可访问的项目列表。返回项目的完整信息：项目名称、命名空间、描述、可见性、默认分支、统计信息（星标数、Fork数）以及最后更新时间。项目按更新时间倒序排列，最多返回100个项目。",
       inputSchema: {}
     },
-    async () => {
-      try {
-        const projects = await getGitLabProjects();
-        const projectsText = generateProjectsListText(projects);
-        return {
-          content: [{ type: "text", text: projectsText }]
-        };
-      } catch (error) {
-        const errorMessage = handleGitLabError(error);
-        return { content: [{ type: "text", text: errorMessage }] };
-      }
-    }
+    createToolHandler(async () => {
+      const projects = await getGitLabProjects(sessionId);
+      return generateProjectsListText(projects);
+    })
   );
 
   // 2) 根据分支名筛选项目
@@ -45,18 +59,10 @@ export function registerGitLabTools(server: McpServer): void {
         branchName: z.string().min(1).describe("要搜索的分支名，支持模糊匹配。不区分大小写。例如：'main'、'develop'、'feature'、'hotfix'等")
       }
     },
-    async ({ branchName }) => {
-      try {
-        const projects = await getProjectsWithBranch(branchName);
-        const projectsText = generateProjectsWithBranchesListText(projects, branchName);
-        return {
-          content: [{ type: "text", text: projectsText }]
-        };
-      } catch (error) {
-        const errorMessage = handleGitLabError(error);
-        return { content: [{ type: "text", text: errorMessage }] };
-      }
-    }
+    createToolHandler(async ({ branchName }: { branchName: string }) => {
+      const projects = await getProjectsWithBranch(branchName, sessionId);
+      return generateProjectsWithBranchesListText(projects, branchName);
+    })
   );
 
   // 3) 按项目名查询项目信息
@@ -69,23 +75,12 @@ export function registerGitLabTools(server: McpServer): void {
         projectName: z.string().min(1).describe("项目名称或命名空间，支持精确和模糊匹配。例如：'myproject'、'group/subgroup/project'、'frontend-app'等")
       }
     },
-    async ({ projectName }) => {
-      try {
-        const project = await getProjectByName(projectName);
-        if (!project) {
-          return {
-            content: [{
-              type: "text",
-              text: `🔍 未找到与 "${projectName}" 匹配的项目\n\n💡 搜索建议：\n- 检查项目名称拼写是否正确\n- 尝试使用更短的关键词进行模糊搜索\n- 可以使用命名空间格式，如 'group/project'\n- 确保你有访问该项目的权限`
-            }]
-          };
-        }
-        const text = generateProjectsListText([project]);
-        return { content: [{ type: "text", text }] };
-      } catch (error) {
-        const errorMessage = handleGitLabError(error);
-        return { content: [{ type: "text", text: errorMessage }] };
+    createToolHandler(async ({ projectName }: { projectName: string }) => {
+      const project = await getProjectByName(projectName, sessionId);
+      if (!project) {
+        return `🔍 未找到与 "${projectName}" 匹配的项目\n\n💡 搜索建议：\n- 检查项目名称拼写是否正确\n- 尝试使用更短的关键词进行模糊搜索\n- 可以使用命名空间格式，如 'group/project'\n- 确保你有访问该项目的权限`;
       }
-    }
+      return generateProjectsListText([project]);
+    })
   );
 }

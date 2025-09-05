@@ -1,27 +1,45 @@
 import axios, { AxiosInstance } from "axios";
 import https from "https";
 import { GitLabBranch, GitLabProject, ProjectWithBranches } from "../types/index.js";
+import { configManager } from "./config.js";
 
-// ==================== 统一配置系统 ====================
-// 所有模式都使用同一个配置对象，HTTP模式在启动时更新它
-export const CONFIG = {
-  gitlabUrl: process.env.GITLAB_URL || "https://gitlab.com/",
-  gitlabToken: process.env.GITLAB_TOKEN
-};
+// ==================== 错误分类系统 ====================
 
-// HTTP模式配置更新函数
-export function updateConfig(url: string, token: string): void {
-  CONFIG.gitlabUrl = url;
-  CONFIG.gitlabToken = token;
-  console.log(`🔧 配置已更新: ${url}`);
+/**
+ * GitLab API 错误类型枚举
+ */
+export enum GitLabErrorType {
+  NETWORK_ERROR = 'NETWORK_ERROR',
+  AUTH_ERROR = 'AUTH_ERROR',
+  PERMISSION_ERROR = 'PERMISSION_ERROR',
+  API_LIMIT_ERROR = 'API_LIMIT_ERROR',
+  CONFIG_ERROR = 'CONFIG_ERROR',
+  NOT_FOUND_ERROR = 'NOT_FOUND_ERROR',
+  SERVER_ERROR = 'SERVER_ERROR',
+  UNKNOWN_ERROR = 'UNKNOWN_ERROR'
+}
+
+/**
+ * GitLab API 错误类
+ */
+export class GitLabAPIError extends Error {
+  constructor(
+    message: string,
+    public type: GitLabErrorType,
+    public statusCode?: number,
+    public originalError?: any
+  ) {
+    super(message);
+    this.name = 'GitLabAPIError';
+  }
 }
 
 // ==================== 配置检查 ====================
 // 检查GitLab token
-export function checkGitLabToken(forceExit: boolean = true): void {
-  const token = CONFIG.gitlabToken;
+export function checkGitLabToken(forceExit: boolean = true, sessionId?: string): void {
+  const config = configManager.getConfig(sessionId);
 
-  if (!token) {
+  if (!config.gitlabToken) {
     console.warn("⚠️  警告: 未设置GITLAB_TOKEN环境变量");
 
     if (forceExit) {
@@ -39,15 +57,36 @@ export function checkGitLabToken(forceExit: boolean = true): void {
   }
 }
 
+// 验证GitLab配置
+export function validateGitLabConfig(sessionId?: string): { url: string; token: string } {
+  const config = configManager.getConfig(sessionId);
+
+  if (!config.gitlabUrl || !config.gitlabToken) {
+    throw new Error("GitLab配置缺失。请通过环境变量或运行时参数配置GITLAB_URL和GITLAB_TOKEN");
+  }
+
+  return {
+    url: config.gitlabUrl,
+    token: config.gitlabToken
+  };
+}
+
 // 创建axios实例
 /**
  * 创建 axios 实例（默认忽略 SSL 校验，便于内网/自签名环境）。
+ * 支持运行时配置覆盖默认配置。
  */
-export function createAxiosInstance(): AxiosInstance {
+export function createAxiosInstance(sessionId?: string): AxiosInstance {
+  const config = configManager.getConfig(sessionId);
+
+  if (!config.gitlabToken) {
+    throw new Error("GitLab token 未配置");
+  }
+
   const axiosConfig = {
     timeout: 30000, // 30秒超时
     headers: {
-      "PRIVATE-TOKEN": CONFIG.gitlabToken,
+      "PRIVATE-TOKEN": config.gitlabToken,
       "Content-Type": "application/json"
     },
     // 禁用SSL验证（支持自签名证书）
@@ -63,45 +102,14 @@ export function createAxiosInstance(): AxiosInstance {
 /**
  * 拉取项目列表，默认每页 100 个，按更新时间倒序。
  */
-export async function getGitLabProjects(): Promise<GitLabProject[]> {
-  // 首先使用全局配置作为默认值
-  let gitlabUrl = CONFIG.gitlabUrl;
-  let gitlabToken = CONFIG.gitlabToken;
+export async function getGitLabProjects(sessionId?: string): Promise<GitLabProject[]> {
+  // 验证配置
+  const { url } = validateGitLabConfig(sessionId);
 
-  // 尝试从process.env获取运行时配置（如果有的话）
-  // 这个方法避免了循环依赖
-  const envUrl = process.env.RUNTIME_GITLAB_URL;
-  const envToken = process.env.RUNTIME_GITLAB_TOKEN;
+  // 使用统一的axios实例创建函数
+  const axiosInstance = createAxiosInstance(sessionId);
 
-  if (envUrl && envToken) {
-    gitlabUrl = envUrl;
-    gitlabToken = envToken;
-
-    // 清理环境变量，避免影响后续请求
-    delete process.env.RUNTIME_GITLAB_URL;
-    delete process.env.RUNTIME_GITLAB_TOKEN;
-  }
-
-  // 检查配置
-  if (!gitlabUrl || !gitlabToken) {
-    throw new Error("GitLab配置缺失。请通过环境变量或运行时参数配置GITLAB_URL和GITLAB_TOKEN");
-  }
-
-  // 创建axios实例（使用配置）
-  const axiosConfig = {
-    timeout: 30000,
-    headers: {
-      "PRIVATE-TOKEN": gitlabToken,
-      "Content-Type": "application/json"
-    },
-    httpsAgent: new https.Agent({
-      rejectUnauthorized: false
-    })
-  };
-
-  const axiosInstance = axios.create(axiosConfig);
-
-  const response = await axiosInstance.get<GitLabProject[]>(`${gitlabUrl}/api/v4/projects`, {
+  const response = await axiosInstance.get<GitLabProject[]>(`${url}/api/v4/projects`, {
     params: {
       per_page: 100,
       order_by: "updated_at",
@@ -115,15 +123,14 @@ export async function getGitLabProjects(): Promise<GitLabProject[]> {
 /**
  * 通过项目名或完整命名空间搜索项目，优先返回精确匹配；否则返回第一个近似匹配或空。
  * @param projectName 项目名称
+ * @param sessionId 会话ID（用于获取运行时配置）
  */
-export async function getProjectByName(projectName: string): Promise<GitLabProject | null> {
-  // 检查配置
-  if (!CONFIG.gitlabUrl || !CONFIG.gitlabToken) {
-    throw new Error("GitLab配置缺失。请通过Cursor客户端的env字段配置GITLAB_URL和GITLAB_TOKEN");
-  }
+export async function getProjectByName(projectName: string, sessionId?: string): Promise<GitLabProject | null> {
+  // 验证配置
+  const { url } = validateGitLabConfig(sessionId);
 
-  const axiosInstance = createAxiosInstance();
-  const response = await axiosInstance.get<GitLabProject[]>(`${CONFIG.gitlabUrl}/api/v4/projects`, {
+  const axiosInstance = createAxiosInstance(sessionId);
+  const response = await axiosInstance.get<GitLabProject[]>(`${url}/api/v4/projects`, {
     params: {
       search: projectName,
       simple: true,
@@ -147,17 +154,16 @@ export async function getProjectByName(projectName: string): Promise<GitLabProje
 /**
  * 拉取指定项目的分支列表。
  * @param projectId 项目ID
+ * @param sessionId 会话ID（用于获取运行时配置）
  */
-export async function getProjectBranches(projectId: number): Promise<GitLabBranch[]> {
-  // 检查配置
-  if (!CONFIG.gitlabUrl || !CONFIG.gitlabToken) {
-    throw new Error("GitLab配置缺失。请通过Cursor客户端的env字段配置GITLAB_URL和GITLAB_TOKEN");
-  }
+export async function getProjectBranches(projectId: number, sessionId?: string): Promise<GitLabBranch[]> {
+  // 验证配置
+  const { url } = validateGitLabConfig(sessionId);
 
-  const axiosInstance = createAxiosInstance();
+  const axiosInstance = createAxiosInstance(sessionId);
 
   try {
-    const response = await axiosInstance.get<GitLabBranch[]>(`${CONFIG.gitlabUrl}/api/v4/projects/${projectId}/repository/branches`, {
+    const response = await axiosInstance.get<GitLabBranch[]>(`${url}/api/v4/projects/${projectId}/repository/branches`, {
       params: {
         per_page: 100 // 每页100个分支
       }
@@ -173,11 +179,13 @@ export async function getProjectBranches(projectId: number): Promise<GitLabBranc
 // 获取包含指定分支名的所有项目
 /**
  * 搜索包含给定分支名（模糊匹配）的所有项目，支持并发限制以规避 API 限流。
+ * @param branchName 分支名
+ * @param sessionId 会话ID（用于获取运行时配置）
  */
-export async function getProjectsWithBranch(branchName: string): Promise<ProjectWithBranches[]> {
+export async function getProjectsWithBranch(branchName: string, sessionId?: string): Promise<ProjectWithBranches[]> {
   try {
     // 首先获取所有项目
-    const projects = await getGitLabProjects();
+    const projects = await getGitLabProjects(sessionId);
     const projectsWithBranches: ProjectWithBranches[] = [];
 
     console.log(`🔍 正在搜索包含分支 "${branchName}" 的项目...`);
@@ -191,7 +199,7 @@ export async function getProjectsWithBranch(branchName: string): Promise<Project
       await Promise.all(
         batch.map(async (project) => {
           try {
-            const branches = await getProjectBranches(project.id);
+            const branches = await getProjectBranches(project.id, sessionId);
             const matchingBranches = branches.filter((branch) =>
               branch.name.toLowerCase().includes(branchName.toLowerCase())
             );
@@ -251,4 +259,59 @@ export function handleGitLabError(error: any): string {
   }
 
   return `❌ 获取GitLab项目失败: ${error instanceof Error ? error.message : '未知错误'}`;
+}
+
+/**
+ * 分类GitLab API错误
+ */
+export function classifyGitLabError(error: any): GitLabErrorType {
+  if (!axios.isAxiosError(error)) {
+    return GitLabErrorType.UNKNOWN_ERROR;
+  }
+
+  const status = error.response?.status;
+  const code = (error as any).code;
+
+  // 网络错误
+  if (status === 0 || code === 'ECONNREFUSED' || code === 'ENOTFOUND' || code === 'ETIMEDOUT') {
+    return GitLabErrorType.NETWORK_ERROR;
+  }
+
+  // HTTP状态码分类
+  switch (status) {
+    case 401:
+      return GitLabErrorType.AUTH_ERROR;
+    case 403:
+      return GitLabErrorType.PERMISSION_ERROR;
+    case 404:
+      return GitLabErrorType.NOT_FOUND_ERROR;
+    case 429:
+      return GitLabErrorType.API_LIMIT_ERROR;
+    case 500:
+    case 502:
+    case 503:
+    case 504:
+      return GitLabErrorType.SERVER_ERROR;
+    default:
+      return GitLabErrorType.UNKNOWN_ERROR;
+  }
+}
+
+/**
+ * 创建分类的GitLab错误
+ */
+export function createGitLabError(error: any, context?: string): Error {
+  const errorType = classifyGitLabError(error);
+  const message = handleGitLabError(error);
+
+  if (axios.isAxiosError(error)) {
+    return new GitLabAPIError(
+      message,
+      errorType,
+      error.response?.status,
+      error
+    );
+  }
+
+  return new Error(`${context ? context + ': ' : ''}${message}`);
 } 
