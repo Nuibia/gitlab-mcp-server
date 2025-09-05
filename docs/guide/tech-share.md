@@ -1,5 +1,6 @@
 ---
 sidebar: false
+footer: false
 ---
 
 # 📖 漫谈 MCP
