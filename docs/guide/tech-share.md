@@ -2,7 +2,9 @@
 sidebar: false
 ---
 
-# 🚀 GitLab MCP 服务器 - 技术分享
+# 📖 漫谈 MCP
+
+## 🚀 GitLab MCP 服务器 - 技术分享
 
 ## 🤖 什么是 MCP？
 
@@ -455,11 +457,27 @@ GitLab MCP 服务器正是为了解决这一问题而生：
 ### MCP 协议 - 标准化的 AI 工具协议
 
 ```typescript
-// MCP 服务器的核心接口
-interface McpServer {
-  registerTool(name: string, config: ToolConfig, handler: ToolHandler): void
-  connect(transport: Transport): Promise<void>
-}
+// MCP 服务器的实际使用方式
+const server = new McpServer({
+  name: "gitlab-mcp-server",
+  version: "1.0.0"
+});
+
+// 注册工具的实际API
+server.registerTool(
+  "list_projects",
+  {
+    title: "获取GitLab项目列表",
+    description: "获取当前GitLab实例中所有可访问的项目列表",
+    inputSchema: {}
+  },
+  async () => {
+    // 工具实现逻辑
+    return {
+      content: [{ type: "text", text: "项目列表..." }]
+    };
+  }
+);
 ```
 
 **技术亮点：**
@@ -467,24 +485,30 @@ interface McpServer {
 - 支持 Stdio 和 HTTP 双模式运行
 - 统一的工具注册和管理机制
 
-### TypeScript + 现代化工具链
+### 项目实际技术栈
 
 ```json
 {
-  "技术栈": {
+  "实际技术栈": {
     "语言": "TypeScript 5.3+",
-    "构建": "ESBuild + TSC",
-    "开发": "tsx + nodemon",
-    "文档": "VitePress",
-    "包管理": "yarn + nvm"
+    "MCP SDK": "@modelcontextprotocol/sdk ^1.17.1",
+    "运行时": "Node.js 18+",
+    "构建工具": "TypeScript Compiler (tsc)",
+    "开发工具": "tsx + nodemon",
+    "配置管理": "zod ^3.23.8",
+    "网络请求": "axios ^1.6.0",
+    "Web框架": "express ^4.18.2",
+    "文档": "VitePress ^1.3.0",
+    "包管理": "yarn"
   }
 }
 ```
 
-**设计理念：**
-- **类型安全优先**：使用 TypeScript 提供完整的类型定义
-- **开发体验优化**：热重载、类型检查、代码格式化
-- **生产就绪**：优化的构建流程和部署配置
+**核心依赖说明：**
+- **@modelcontextprotocol/sdk**：官方MCP协议实现
+- **zod**：运行时类型验证和配置管理
+- **axios**：GitLab API调用的HTTP客户端
+- **tsx**：支持ESM和TypeScript的Node.js运行时
 
 ## 🏛️ 分层架构设计
 
@@ -649,16 +673,30 @@ const qualityGates = [
 ### 配置管理的设计理念
 
 ```typescript
-// 环境变量映射
+// 基于项目的实际配置代码
+import { z } from 'zod';
+
+// 配置验证schema
 const configSchema = z.object({
-  gitlabUrl: z.string().url(),
+  name: z.string().default('gitlab-mcp-server'),
+  version: z.string().default('1.0.0'),
+  gitlabUrl: z.string().url().default('https://gitlab.com'),
   gitlabToken: z.string().min(1),
-  concurrency: z.number().min(1).max(10),
-  timeout: z.number().min(1000)
+  port: z.number().default(3000),
+  concurrency: z.number().min(1).max(10).default(5)
 });
 
-// 运行时配置验证
-export function validateConfig(config: any): Config {
+// 实际的配置获取函数
+export function getServerConfig() {
+  const config = {
+    name: process.env.MCP_SERVER_NAME || 'gitlab-mcp-server',
+    version: process.env.MCP_SERVER_VERSION || '1.0.0',
+    gitlabUrl: process.env.GITLAB_URL || 'https://gitlab.com',
+    gitlabToken: process.env.GITLAB_TOKEN,
+    port: parseInt(process.env.PORT || '3000'),
+    concurrency: parseInt(process.env.GITLAB_FETCH_CONCURRENCY || '5')
+  };
+
   return configSchema.parse(config);
 }
 ```
@@ -668,14 +706,25 @@ export function validateConfig(config: any): Config {
 ### 容器化部署方案
 
 ```dockerfile
+# 示例 Dockerfile（可根据项目需求创建）
 FROM node:18-alpine
 WORKDIR /app
+
+# 复制package文件
 COPY package.json yarn.lock ./
 RUN yarn install --production
+
+# 复制构建产物
 COPY dist/ ./dist/
+
+# 暴露端口
 EXPOSE 3000
-CMD ["yarn", "start:http"]
+
+# 启动命令
+CMD ["node", "dist/http-server.js"]
 ```
+
+**注意**：当前项目暂未包含 Dockerfile，可根据部署需求自行创建。
 
 ### 监控与日志策略
 
@@ -836,21 +885,36 @@ CMD ["yarn", "start:http"]
 ### 企业级部署选项
 
 #### AWS Lambda + API Gateway
-```typescript
-// serverless.yml
+```yaml
+# serverless.yml 示例
 service: gitlab-mcp-server
 
 provider:
   name: aws
   runtime: nodejs18.x
+  environment:
+    GITLAB_TOKEN: ${env:GITLAB_TOKEN}
+    GITLAB_URL: ${env:GITLAB_URL}
 
 functions:
-  mcp:
-    handler: dist/index.handler
+  mcpHandler:
+    handler: dist/http-server.serverlessHandler
     events:
       - http:
           path: /mcp
           method: post
+          cors: true
+```
+
+```typescript
+// http-server.ts 中的 serverless 导出
+export const serverlessHandler = async (event, context) => {
+  // 处理 Lambda 事件
+  return {
+    statusCode: 200,
+    body: JSON.stringify({ message: "MCP response" })
+  };
+};
 ```
 
 ### 托管平台对比
