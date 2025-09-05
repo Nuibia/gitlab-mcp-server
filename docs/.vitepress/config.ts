@@ -158,7 +158,9 @@ export default defineConfig({
     },
 
     outline: 'deep',
-    socialLinks: [],
+    socialLinks: [
+      { icon: 'github', link: 'https://github.com/Nuibia/gitlab-mcp-server' }
+    ],
     footer: {
       message: 'MIT License',
       copyright: 'Copyright © 2025'
