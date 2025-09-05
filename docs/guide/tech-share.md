@@ -240,6 +240,22 @@ const server = new Server(
 );
 
 // 2. 注册工具处理器 (实际代码在 src/mcp/register-tools.ts)
+
+// 新
+server.registerTool(
+  "list_projects",
+  {
+    title: "获取GitLab项目列表",
+   description: "获取当前GitLab实例中所有可访问的项目列表...",
+    inputSchema: {}
+  },
+  async () => {
+    const projects = await getGitLabProjects(sessionId);
+    return generateProjectsListText(projects);
+  }
+);
+
+// 老
 server.setRequestHandler("tools/list", async () => {
   return {
     tools: [
@@ -335,62 +351,6 @@ await server.connect(transport);
 
 ### 工具定义与注册
 
-基于 `gitlab-mcp-server` 项目的实际工具实现：
-
-```typescript
-// 📁 src/mcp/register-tools.ts - 实际项目中的工具注册
-import { Server } from "@modelcontextprotocol/sdk/server/index.js";
-import { listProjects } from "../services/gitlab.js";
-import { formatProjectsList, formatProjectInfo } from "../utils/format.js";
-
-export function registerTools(server: Server) {
-  // 1. 注册工具列表
-  server.setRequestHandler("tools/list", async () => {
-    return {
-      tools: [
-        {
-          name: "list_projects",
-          description: "获取当前GitLab实例中所有可访问的项目列表",
-          inputSchema: { type: "object", properties: {} }
-        },
-        {
-          name: "get_project_by_name",
-          description: "通过项目名称搜索GitLab项目",
-          inputSchema: {
-            type: "object",
-            properties: {
-              projectName: { type: "string", description: "项目名称" }
-            }
-          }
-        }
-      ]
-    };
-  });
-
-  // 2. 注册工具调用处理器
-  server.setRequestHandler("tools/call", async (request) => {
-    const { name, arguments: args } = request.params;
-
-    switch (name) {
-      case "list_projects":
-        const projects = await listProjects();
-        return {
-          content: [{ type: "text", text: formatProjectsList(projects) }]
-        };
-
-      case "get_project_by_name":
-        const project = await getProjectByName(args.projectName);
-        return {
-          content: [{ type: "text", text: project ? formatProjectInfo(project) : "项目未找到" }]
-        };
-
-      default:
-        throw new Error(`未知工具: ${name}`);
-    }
-  });
-}
-```
-
 **📁 相关文件对照**:
 - **工具注册**: `src/mcp/register-tools.ts` - 统一注册所有工具
 - **业务逻辑**: `src/services/gitlab.ts` - GitLab API 调用
@@ -421,37 +381,20 @@ await server.connect(transport);
 - ✅ **扩展性好**：可水平扩展
 - ❌ **配置复杂**：需要网络配置
 
+根据部署环境选择合适的传输方式：
+
+- **开发环境**：推荐使用 Stdio 模式，启动快便于调试
+- **生产环境**：推荐使用 HTTP 模式，支持远程访问和扩展
+
 ## 🎨 MCP 开发最佳实践
 
 ### MCP 项目结构建议
 
-基于 `gitlab-mcp-server` 项目的实际结构设计：
-
-```typescript
-// 📁 实际项目结构 (src/)
-src/
-├── index.ts                    // Stdio 服务器主入口
-├── http-server.ts              // HTTP 服务器主入口
-├── mcp/
-│   └── register-tools.ts       // 🛠️ 统一工具注册中心
-├── services/                   // 🔧 业务逻辑层
-│   ├── index.ts                // 服务模块导出
-│   ├── gitlab.ts               // GitLab API 封装与错误处理
-│   └── config.ts               // 运行时配置管理
-├── types/                      // 📋 类型定义
-│   ├── index.ts                // 类型模块导出
-│   ├── gitlab.ts               // GitLab API 相关类型
-│   └── config.ts               // 配置相关类型
-└── utils/                      // 🧰 工具函数
-    ├── index.ts                // 工具模块导出
-    └── format.ts               // 文本格式化纯函数
-```
-
-**🏗️ 架构设计原则**:
-- **services/**：存放所有请求和副作用逻辑（遵循单一职责）
-- **utils/**：存放纯函数和数据处理逻辑（无副作用，可测试）
-- **types/**：集中管理所有TypeScript类型定义
-- **mcp/**：MCP协议相关的核心逻辑
+**🏗️ 核心架构原则**:
+- **services/**：业务逻辑和外部API调用
+- **utils/**：纯函数和数据处理工具
+- **types/**：TypeScript类型定义
+- **mcp/**：MCP协议相关逻辑
 
 ### 开发流程规范
 
@@ -566,12 +509,11 @@ yarn build && yarn start  # Stdio 模式
 yarn build && yarn http   # HTTP 模式
 ```
 
-**🔧 配置说明**:
-- **GITLAB_TOKEN**: 必需，具有 `read_api` 权限的 Personal Access Token
-- **GITLAB_URL**: GitLab 实例地址，默认 `https://gitlab.com`
-- **PORT**: HTTP 模式监听端口，默认 `3000`
+**🔧 必需配置**:
+- **GITLAB_TOKEN**: 具有 `read_api` 权限的 Personal Access Token
+- **GITLAB_URL**: GitLab 实例地址（默认为 `https://gitlab.com`）
 
-**📋 Claude Desktop 配置示例**:
+**📋 配置示例**:
 
 在 Claude Desktop 的配置文件中添加以下任一配置：
 
@@ -692,9 +634,8 @@ export PORT=3000
 # 4. 构建项目
 yarn build
 
-# 5. 启动服务（选择一种方式）
+# 5. 启动服务
 yarn http    # HTTP 模式，适合远程访问
-yarn start   # Stdio 模式，适合本地集成
 ```
 
 **🔧 使用 PM2 管理进程（生产环境推荐）：**
