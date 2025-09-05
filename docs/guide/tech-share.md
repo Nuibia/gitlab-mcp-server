@@ -1003,6 +1003,32 @@ docker run -d \
 - 🔒 **数据安全**：敏感数据留在你的服务器
 - 📊 **资源优化**：根据实际需求配置资源
 
+### 🔗 推荐的 MCP 服务资源
+
+**📚 MCP 服务器精选合集：**
+- **[Awesome MCP Servers](https://github.com/punkpeye/awesome-mcp-servers)** ⭐⭐⭐⭐⭐ - 最全面的 MCP 服务器收集，包含 1000+ 项目
+- **[Glama.ai MCP](https://glama.ai/mcp/servers)** - MCP 服务器目录和客户端
+
+**🏢 官方与主流平台：**
+- **[Anthropic MCP](https://modelcontextprotocol.io/)** - 官方协议和文档
+- **[Cursor MCP](https://docs.cursor.com/zh/context/mcp)** - Cursor 内置 MCP 支持
+- **[Claude Desktop](https://docs.anthropic.com/claude/docs/desktop-mcp)** - Claude 官方 MCP 集成
+
+**🔧 核心 MCP 工具：**
+- **[MCP SDK](https://www.npmjs.com/package/@modelcontextprotocol/sdk)** - 官方开发工具包
+- **[MCP Inspector](https://github.com/modelcontextprotocol/inspector)** - MCP 服务器调试工具
+
+**🌟 热门 MCP 服务器项目：**
+- **[GitHub MCP Server](https://github.com/github/github-mcp-server)** - GitHub 集成
+- **[mcp-server-git](https://github.com/modelcontextprotocol/server-git)** - Git 仓库管理
+- **[mcp-server-filesystem](https://github.com/modelcontextprotocol/server-filesystem)** - 文件系统操作
+- **[Slack MCP Server](https://github.com/slack-mcp/server)** - Slack 协作工具
+- **[Notion MCP Server](https://github.com/notion-mcp/server)** - Notion 文档管理
+
+**🎯 MCP 开发框架：**
+- **[FastMCP](https://fastmcp.com/)** - Python/TypeScript 高性能 MCP 框架
+- **[MCP Python SDK](https://github.com/modelcontextprotocol/python-sdk)** - Python 官方 SDK
+
 ## 💡 总结与启发
 
 ### MCP 的核心价值
