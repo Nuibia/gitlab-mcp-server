@@ -66,7 +66,7 @@ curl -X POST http://localhost:3000/mcp \
 🎯 **恭喜！** 你已经成功启动了GitLab MCP服务器
 
 📖 **深入了解**：
-- [完整使用指南](../USAGE.md) - 详细配置选项和高级用法
+- [完整使用指南](./usage.md) - 详细配置选项和高级用法
 - [配置说明](config.md) - 环境变量详解
 - [架构说明](architecture.md) - 项目设计理念
 
