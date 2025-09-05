@@ -32,7 +32,7 @@ export function checkGitLabToken(forceExit: boolean = true): void {
       process.exit(1);
     } else {
       // HTTP模式：仅警告，不退出
-      console.info("💡 提示: 可通过Cursor客户端的env字段注入配置，或使用POST /config端点更新配置");
+      console.info("💡 提示: 可通过Cursor客户端的HTTP头传递配置，或使用环境变量配置");
     }
   } else {
     console.log("✅ GitLab Token 已配置");

@@ -5,7 +5,6 @@ import cors from "cors";
 import express from "express";
 import { registerGitLabTools } from "./mcp/register-tools.js";
 import { getConfig, getServerConfig } from "./services/config.js";
-import { updateConfig } from "./services/gitlab.js";
 import { checkGitLabToken } from "./services/index.js";
 
 // 注意：GitLab配置将在运行时通过Cursor客户端注入，无需启动时强制检查
@@ -208,41 +207,6 @@ app.all('/mcp', async (req, res) => {
   }
 });
 
-// 配置更新端点（用于Cursor客户端注入配置）
-app.post('/config', (req, res) => {
-  try {
-    const { gitlabUrl, gitlabToken } = req.body;
-
-    if (gitlabUrl && gitlabToken) {
-      updateConfig(gitlabUrl, gitlabToken);
-      console.log(`🔧 配置已更新: ${gitlabUrl}`);
-
-      // 同时更新环境变量，以便下次重启时使用
-      process.env.GITLAB_URL = gitlabUrl;
-      process.env.GITLAB_TOKEN = gitlabToken;
-    } else {
-      return res.status(400).json({
-        success: false,
-        message: '配置更新失败：需要同时提供 gitlabUrl 和 gitlabToken'
-      });
-    }
-    res.json({
-      success: true,
-      message: '配置已更新',
-      config: {
-        gitlabUrl,
-        hasToken: true,
-        ready: true
-      }
-    });
-  } catch (error) {
-    res.status(500).json({
-      success: false,
-      message: '配置更新失败',
-      error: error instanceof Error ? error.message : '未知错误'
-    });
-  }
-});
 
 // 健康检查端点
 app.get('/health', (req, res) => {
@@ -272,8 +236,7 @@ app.get('/', (req, res) => {
     },
     endpoints: {
       health: '/health',
-      mcp: '/mcp',
-      config: '/config (POST - 更新配置)'
+      mcp: '/mcp'
     }
   });
 });
